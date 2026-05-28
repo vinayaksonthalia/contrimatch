@@ -142,7 +142,7 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 ---
 
-## 🗺️ Roadmap v3 (Future Vision)
+## 🗺️ Roadmap v2 (Future Vision)
 
 To expand ContriMatch into an enterprise-grade workspace for professional open-source engineers, the next release cycle will introduce:
 *   **AI Auto-PR Drafter**: Suggest actual code edits for claimed issues and draft PRs automatically based on user's workspace history.
