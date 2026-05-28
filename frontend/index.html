@@ -61,6 +61,10 @@
         <span class="stat-value" id="stat-api">…</span>
         <span class="stat-label">API</span>
       </div>
+      <div class="stat-chip" id="help-chip" onclick="toggleHelpPanel()" style="cursor: pointer; border-color: var(--border-accent); background: var(--accent-glow); transition: all 0.2s;">
+        <span class="stat-value">💬</span>
+        <span class="stat-label" style="color: var(--accent-light); font-weight: 600;">Help</span>
+      </div>
     </div>
 
     <!-- Row 1: Issues + Workspace + Jobs (grid-3) -->
@@ -102,20 +106,6 @@
         <div class="card-body" id="workspace-body">
           <div class="loading"><div class="spinner"></div> Syncing pull requests…</div>
         </div>
-        <div style="padding: 10px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn-sm" id="resume-tips-btn" onclick="toggleResumeInput()" style="width: 100%; justify-content: center; gap: 6px; font-size: 11px;">📄 Resume Tips</button>
-          
-          <!-- Expandable Resume Input area -->
-          <div id="resume-input-container" style="display: none; flex-direction: column; gap: 8px; margin-top: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-input);">
-            <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-align: left;">Paste your current Resume text:</label>
-            <textarea id="resume-text-input" placeholder="Paste your resume text here to analyze and find missing contributions..." style="width: 100%; height: 100px; font-size: 11px; padding: 8px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--bg-base); color: var(--text-primary); resize: vertical; outline: none; font-family: var(--font-sans);"></textarea>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-sm" onclick="analyzeResume()" style="flex: 1; padding: 4px 8px; font-size: 11px;">Analyze & Improve</button>
-              <button class="btn btn-sm" onclick="clearResumeText()" style="padding: 4px 8px; font-size: 11px; background: rgba(224, 92, 124, 0.1); color: var(--pink); border-color: rgba(224, 92, 124, 0.2);">Clear</button>
-            </div>
-          </div>
-        </div>
-        <div id="workspace-tips-container" style="display: none; padding: 14px; background: rgba(124, 108, 240, 0.08); border-top: 1px solid var(--border); font-size: 12px; animation: fadeUp 0.3s ease both;"></div>
       </div>
 
       <!-- Jobs (Remotive) -->
@@ -385,6 +375,40 @@
           <button class="btn btn-sm" style="width: 100%; margin-top: 10px;" onclick="changePassword()">Change Password</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Help Slide-In Panel -->
+  <div class="help-panel" id="help-panel" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: var(--bg-card); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg); z-index: 1000; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column;">
+    <div class="help-panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);">
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-light); margin: 0; display: flex; align-items: center; gap: 8px;">💬 ContriMatch Help</h3>
+      <button onclick="toggleHelpPanel()" style="font-size: 22px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 4px; line-height: 1;">×</button>
+    </div>
+    <div class="help-panel-body" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+      <div>
+        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">Quick Actions</div>
+        <div class="help-presets" style="display: flex; flex-direction: column; gap: 6px;">
+          <button class="btn btn-sm" onclick="askHelpPreset('Forgot Password')" style="font-size: 11px; padding: 6px 10px; justify-content: flex-start; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--bg-elevated);">🔑 Forgot Password</button>
+          <button class="btn btn-sm" onclick="askHelpPreset('Push Digest')" style="font-size: 11px; padding: 6px 10px; justify-content: flex-start; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--bg-elevated);">✈️ How to use Push Digest</button>
+          <button class="btn btn-sm" onclick="askHelpPreset('Filter jobs')" style="font-size: 11px; padding: 6px 10px; justify-content: flex-start; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--bg-elevated);">💼 How to filter jobs</button>
+          <button class="btn btn-sm" onclick="askHelpPreset('How to contribute to OSS')" style="font-size: 11px; padding: 6px 10px; justify-content: flex-start; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--bg-elevated);">🥇 How to contribute to OSS</button>
+          <button class="btn btn-sm" onclick="askHelpPreset('Resume Tips')" style="font-size: 11px; padding: 6px 10px; justify-content: flex-start; text-align: left; width: 100%; border: 1px solid var(--border); background: var(--bg-elevated);">📄 Get Resume Tips</button>
+        </div>
+      </div>
+      <hr style="border: none; border-top: 1px solid var(--border); margin: 0;">
+      <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+        <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">Help Assistant Chat</div>
+        <div id="help-chat-messages" style="flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; background: var(--bg-input); display: flex; flex-direction: column; gap: 12px; min-height: 200px; font-size: 12px; text-align: left;">
+          <div style="color: var(--text-secondary); line-height: 1.4;">Welcome to ContriMatch Help! Click any of the Quick Actions presets above or type a custom question below regarding features, jobs, issues, or career tips. You can also paste your resume text here to analyze missing contributions.</div>
+        </div>
+      </div>
+    </div>
+    <div class="help-panel-footer" style="padding: 16px 20px; border-top: 1px solid var(--border); background: var(--bg-elevated); display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="help-chat-input" placeholder="Type a message..." style="flex: 1; min-width: 0; padding: 8px 12px; font-size: 12px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--bg-base); color: var(--text-primary); outline: none;" onkeydown="if(event.key==='Enter') sendHelpMessage()">
+      <button class="btn btn-sm" id="help-chat-btn" onclick="sendHelpMessage()" style="padding: 8px 14px; font-size: 11px;">
+        <span class="btn-spinner"></span>
+        <span class="btn-text">Send</span>
+      </button>
     </div>
   </div>
 

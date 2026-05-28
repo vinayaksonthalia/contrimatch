@@ -1091,4 +1091,21 @@ body.light-theme::before { opacity: 0.5; }
   color: var(--text-muted);
 }
 
+/* ─── Help Panel Styles ────────────────────────────────────────── */
+.help-panel {
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+}
+.help-presets button {
+  transition: all 0.2s ease;
+}
+.help-presets button:hover {
+  border-color: var(--accent-light) !important;
+  color: var(--accent-light) !important;
+  background: var(--bg-hover) !important;
+}
+.chat-message {
+  animation: fadeUp 0.25s ease both;
+}
+
+
 

@@ -1394,85 +1394,145 @@ function toggleOrgGroup(id) {
 // ─── Initialize ────────────────────────────────────────────────────
 let currentPrsForTips = [];
 
-function toggleResumeInput() {
-  const inputContainer = document.getElementById("resume-input-container");
-  const tipsContainer = document.getElementById("workspace-tips-container");
-  if (!inputContainer) return;
-  
-  const isHidden = inputContainer.style.display === "none";
-  inputContainer.style.display = isHidden ? "flex" : "none";
-  
+// ─── Help Panel & Chat History ──────────────────────────────────────
+function toggleHelpPanel() {
+  const panel = document.getElementById("help-panel");
+  if (!panel) return;
+  const isHidden = panel.style.right === "" || panel.style.right === "-400px";
+  panel.style.right = isHidden ? "0" : "-400px";
   if (isHidden) {
-    const saved = localStorage.getItem("resumeText") || "";
-    const textarea = document.getElementById("resume-text-input");
-    if (textarea) textarea.value = saved;
-  } else {
-    if (tipsContainer) tipsContainer.style.display = "none";
+    renderHelpChat();
   }
 }
 
-function clearResumeText() {
-  const textarea = document.getElementById("resume-text-input");
-  if (textarea) textarea.value = "";
-  localStorage.removeItem("resumeText");
-  const tipsContainer = document.getElementById("workspace-tips-container");
-  if (tipsContainer) tipsContainer.style.display = "none";
-}
-
-async function analyzeResume() {
-  const textarea = document.getElementById("resume-text-input");
-  const resumeText = textarea ? textarea.value.trim() : "";
-  
-  // Save to localStorage
-  localStorage.setItem("resumeText", resumeText);
-  
-  const container = document.getElementById("workspace-tips-container");
+function renderHelpChat() {
+  const container = document.getElementById("help-chat-messages");
   if (!container) return;
+  const history = JSON.parse(localStorage.getItem("helpHistory")) || [];
   
-  container.style.display = "block";
-  container.innerHTML = `<div class="loading" style="padding: 10px 0;"><div class="spinner"></div> Gemini is analyzing resume & contributions...</div>`;
-  
-  try {
-    const res = await fetch(`${API}/resume_tips`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prs: currentPrsForTips,
-        resume_text: resumeText
-      })
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to load AI suggestions");
-    }
-    
-    const json = await res.json();
-    const tips = json.tips || [];
-    
-    if (tips.length === 0) {
-      container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-          <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Recommendations</span>
-          <button class="close-btn" onclick="document.getElementById('workspace-tips-container').style.display='none'" style="font-size: 16px; padding: 2px 8px; background:transparent; border:none; cursor:pointer;">×</button>
-        </div>
-        <div style="font-size: 11px; color: var(--text-secondary); text-align: left; line-height: 1.4;">No missing contributions detected. Your resume looks fully updated with your workspace contributions!</div>
-      `;
-      return;
-    }
-    
-    container.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-        <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Recommendations</span>
-        <button class="close-btn" onclick="document.getElementById('workspace-tips-container').style.display='none'" style="font-size: 16px; padding: 2px 8px; background:transparent; border:none; cursor:pointer;">×</button>
-      </div>
-      <ul style="margin: 0; padding-left: 16px; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px; list-style-type: disc; text-align: left;">
-        ${tips.map(tip => `<li style="line-height: 1.4;">${esc(tip)}</li>`).join("")}
-      </ul>
-      <div style="font-size: 9px; color: var(--text-muted); margin-top: 10px; text-align: right;">Generated dynamically using Gemini</div>
-    `;
-  } catch (e) {
-    container.innerHTML = `<div class="error-msg" style="font-size: 11px; padding: 10px 0;">Error analyzing resume: ${esc(e.message)}</div>`;
+  if (history.length === 0) {
+    container.innerHTML = `<div style="color: var(--text-secondary); line-height: 1.4;">Welcome to ContriMatch Help! Click any of the Quick Actions presets above or type a custom question below regarding features, jobs, issues, or career tips. You can also paste your resume text here to analyze missing contributions.</div>`;
+    return;
   }
+  
+  container.innerHTML = history.map(chat => `
+    <div class="chat-message user" style="margin-bottom: 8px;">
+      <div style="font-weight: 700; color: var(--accent-light);">You:</div>
+      <div style="margin-top: 2px; line-height: 1.4; white-space: pre-wrap;">${esc(chat.question)}</div>
+    </div>
+    <div class="chat-message assistant" style="margin-bottom: 12px; border-left: 2px solid var(--teal); padding-left: 8px; margin-top: 4px;">
+      <div style="font-weight: 700; color: var(--teal);">ContriMatch Help:</div>
+      <div style="margin-top: 2px; line-height: 1.4; white-space: pre-wrap;">${chat.answer}</div>
+    </div>
+  `).join("");
+  
+  // Auto scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+function saveHelpChat(question, answer) {
+  let history = JSON.parse(localStorage.getItem("helpHistory")) || [];
+  history.push({ question, answer });
+  if (history.length > 10) {
+    history = history.slice(history.length - 10);
+  }
+  localStorage.setItem("helpHistory", JSON.stringify(history));
+  renderHelpChat();
+}
+
+function askHelpPreset(presetName) {
+  let answer = "";
+  if (presetName === "Forgot Password") {
+    answer = "Send any message to your Telegram bot first, then click Settings → Forgot Password. A temp password will arrive on Telegram.";
+  } else if (presetName === "Push Digest") {
+    answer = "Click Push Digest in the top header. Make sure your Telegram bot has received at least one message first.";
+  } else if (presetName === "Filter jobs") {
+    answer = "Use the Location and Tech Stack inputs in the Remote Jobs panel. Type India for India-specific jobs or React for React roles.";
+  } else if (presetName === "How to contribute to OSS") {
+    answer = "To contribute to OSS, identify unassigned open issues (e.g. from the 'OSS Issues' card), claim them, write code locally using Coral, open a pull request, and get it reviewed by maintainers.";
+  } else if (presetName === "Resume Tips") {
+    answer = "To get AI-powered Resume Tips: Paste your resume text in the chat input below and click Send. Gemini will automatically analyze it against your active workspace contributions and suggest bullet points!";
+  }
+  
+  saveHelpChat(presetName, answer);
+}
+
+async function sendHelpMessage() {
+  const input = document.getElementById("help-chat-input");
+  if (!input) return;
+  const question = input.value.trim();
+  if (!question) return;
+  
+  input.value = "";
+  
+  // Append user message immediately for responsiveness
+  let history = JSON.parse(localStorage.getItem("helpHistory")) || [];
+  const container = document.getElementById("help-chat-messages");
+  if (container) {
+    // Render current history plus the new question
+    const tempHistory = [...history, { question, answer: `<div class="spinner" style="width:12px; height:12px; border-width:2px; display:inline-block; vertical-align:middle; margin-right:4px;"></div> Typing...` }];
+    container.innerHTML = tempHistory.map(chat => `
+      <div class="chat-message user" style="margin-bottom: 8px;">
+        <div style="font-weight: 700; color: var(--accent-light);">You:</div>
+        <div style="margin-top: 2px; line-height: 1.4; white-space: pre-wrap;">${esc(chat.question)}</div>
+      </div>
+      <div class="chat-message assistant" style="margin-bottom: 12px; border-left: 2px solid var(--teal); padding-left: 8px; margin-top: 4px;">
+        <div style="font-weight: 700; color: var(--teal);">ContriMatch Help:</div>
+        <div style="margin-top: 2px; line-height: 1.4;">${chat.answer}</div>
+      </div>
+    `).join("");
+    container.scrollTop = container.scrollHeight;
+  }
+  
+  toggleElementLoading("help-chat-btn", true);
+  
+  let answer = "";
+  try {
+    const isResumeQuery = question.toLowerCase().includes("resume") || question.toLowerCase().includes("analyze") || question.length > 150;
+    
+    if (isResumeQuery) {
+      // Auto route to resume tips
+      const res = await fetch(`${API}/resume_tips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prs: currentPrsForTips,
+          resume_text: question
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const tips = json.tips || [];
+        if (tips.length === 0) {
+          answer = "Gemini analyzed your text: No missing workspace contributions detected in your resume. It seems fully up to date!";
+        } else {
+          answer = "Gemini compared your resume with your workspace contributions and recommends adding:<br><br>" + 
+                   tips.map(tip => `• ${esc(tip)}`).join("<br><br>");
+        }
+      } else {
+        answer = "I was unable to analyze your resume. Please check your credentials and try again.";
+      }
+    } else {
+      // Send custom question to help assistant
+      const res = await fetch(`${API}/help`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, history })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        answer = esc(json.answer || "No response received.");
+      } else {
+        answer = "Sorry, I could not reach the Help Assistant API.";
+      }
+    }
+  } catch (e) {
+    answer = "Error processing request: " + esc(e.message);
+  } finally {
+    toggleElementLoading("help-chat-btn", false);
+  }
+  
+  saveHelpChat(question, answer);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

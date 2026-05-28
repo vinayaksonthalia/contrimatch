@@ -340,6 +340,46 @@ def get_resume_tips(req: ResumeTipsRequest):
 
 
 
+class HelpRequest(BaseModel):
+    question: str
+    history: list = []
+
+@app.post("/api/help")
+def post_help(req: HelpRequest):
+    system_prompt = (
+        "You are ContriMatch's help assistant. Only answer questions about: "
+        "ContriMatch features, open source contributions, GitHub issues/PRs, "
+        "job searching for developers, Coral SQL, and career advice for CS students. "
+        "For anything unrelated, say: 'I can only help with open source contributions, jobs, and ContriMatch features.'"
+    )
+    
+    # Format history for Gemini
+    history_str = ""
+    for h in req.history[-5:]: # Keep last 5 for context limit
+        history_str += f"User: {h.get('question')}\nAssistant: {h.get('answer')}\n"
+        
+    prompt = f"{history_str}User: {req.question}\nAssistant:"
+    
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.3,
+                max_output_tokens=1000,
+            ),
+        )
+        return {"answer": response.text.strip()}
+    except Exception as e:
+        print(f"Help API error: {e}")
+        return {"answer": "I'm sorry, I encountered an issue processing your request. Please try again."}
+
+
+
 # ─── Jobs (Remotive) ───────────────────────────────────────────────────
 @app.get("/api/jobs")
 def get_jobs(search: str = "", category: str = "Software Development", location: str = "", tech: str = "", job_type: str = ""):
