@@ -250,6 +250,7 @@ async function loadWorkspace() {
     const res = await fetch(`${API}/workspace?user=${encodeURIComponent(user)}`);
     const json = await res.json();
     const data = json.data || [];
+    currentPrsForTips = data;
 
     stopPanelTimeline("workspace-body");
 
@@ -294,6 +295,9 @@ async function reloadWorkspace() {
 async function loadJobs() {
   const el = document.getElementById("jobs-body");
   const category = document.getElementById("jobs-category-input").value.trim() || "Software Development";
+  const location = document.getElementById("jobs-location-input")?.value.trim() || "";
+  const tech = document.getElementById("jobs-tech-input")?.value.trim() || "";
+  const type = document.getElementById("jobs-type-input")?.value || "";
 
   startPanelTimeline("jobs-body", [
     "💼 Mapping remote career parameters...",
@@ -303,7 +307,12 @@ async function loadJobs() {
   ]);
 
   try {
-    const res = await fetch(`${API}/jobs?category=${encodeURIComponent(category)}`);
+    let url = `${API}/jobs?category=${encodeURIComponent(category)}`;
+    if (location) url += `&location=${encodeURIComponent(location)}`;
+    if (tech) url += `&tech=${encodeURIComponent(tech)}`;
+    if (type) url += `&job_type=${encodeURIComponent(type)}`;
+
+    const res = await fetch(url);
     const json = await res.json();
     const data = json.data || [];
     document.getElementById("stat-jobs").textContent = data.length;
@@ -337,6 +346,16 @@ async function loadJobs() {
     stopPanelTimeline("jobs-body");
     el.innerHTML = `<div class="error-msg">Failed to load jobs: ${esc(err.message)}</div>`;
   }
+}
+
+function resetJobFilters() {
+  const locInput = document.getElementById("jobs-location-input");
+  const techInput = document.getElementById("jobs-tech-input");
+  const typeInput = document.getElementById("jobs-type-input");
+  if (locInput) locInput.value = "";
+  if (techInput) techInput.value = "";
+  if (typeInput) typeInput.value = "";
+  loadJobs();
 }
 
 async function reloadJobs() {
@@ -1208,6 +1227,57 @@ function toggleOrgGroup(id) {
 }
 
 // ─── Initialize ────────────────────────────────────────────────────
+let currentPrsForTips = [];
+
+async function showResumeTips() {
+  const container = document.getElementById("workspace-tips-container");
+  if (!container) return;
+  
+  if (container.style.display === "block") {
+    container.style.display = "none";
+    return;
+  }
+  
+  container.style.display = "block";
+  container.innerHTML = `<div class="loading" style="padding: 10px 0;"><div class="spinner"></div> Gemini is generating bullet points...</div>`;
+  
+  try {
+    const res = await fetch(`${API}/resume_tips`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prs: currentPrsForTips })
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to load AI suggestions");
+    }
+    
+    const json = await res.json();
+    const tips = json.tips || [];
+    
+    if (tips.length === 0) {
+      container.innerHTML = `
+        <div style="font-weight: 700; margin-bottom: 8px;">📄 AI Resume Suggestions</div>
+        <div style="font-size: 11px; color: var(--text-secondary);">No contributions detected yet to generate bullet points. Start by submitting a PR!</div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+        <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Bullet Points</span>
+        <button class="close-btn" onclick="document.getElementById('workspace-tips-container').style.display='none'" style="font-size: 16px; padding: 2px 8px; background:transparent; border:none; cursor:pointer;">×</button>
+      </div>
+      <ul style="margin: 0; padding-left: 16px; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px; list-style-type: disc; text-align: left;">
+        ${tips.map(tip => `<li style="line-height: 1.4;">${esc(tip)}</li>`).join("")}
+      </ul>
+      <div style="font-size: 9px; color: var(--text-muted); margin-top: 10px; text-align: right;">Generated dynamically using Gemini</div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="error-msg" style="font-size: 11px; padding: 10px 0;">Error generating tips: ${esc(e.message)}</div>`;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Apply stored theme if present
   const savedTheme = localStorage.getItem("theme");

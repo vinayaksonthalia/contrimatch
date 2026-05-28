@@ -91,12 +91,14 @@
             <h3>My Workspace</h3>
             <input type="text" id="workspace-user-input" value="vinayaksonthalia" class="header-input" style="width: 105px;" onkeydown="if(event.key==='Enter') reloadWorkspace()">
           </div>
+          <button class="reload-card-btn" onclick="showResumeTips()" title="Get AI Resume Tips" style="margin-right: 5px; color: var(--accent-light);">📄</button>
           <button class="reload-card-btn" onclick="loadWorkspace()" title="Reload Panel">↻</button>
           <span class="card-source" style="background: var(--accent-glow); color: var(--accent-light);">Profile</span>
         </div>
         <div class="card-body" id="workspace-body">
           <div class="loading"><div class="spinner"></div> Syncing pull requests…</div>
         </div>
+        <div id="workspace-tips-container" style="display: none; padding: 14px; background: rgba(124, 108, 240, 0.08); border-top: 1px solid var(--border); font-size: 12px; animation: fadeUp 0.3s ease both;"></div>
       </div>
 
       <!-- Jobs (Remotive) -->
@@ -109,6 +111,18 @@
           </div>
           <button class="reload-card-btn" onclick="loadJobs()" title="Reload Panel">↻</button>
           <span class="card-source">Remotive</span>
+        </div>
+        <div class="card-body-filters" style="display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); align-items: center;">
+          <input type="text" id="jobs-location-input" placeholder="Location" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
+          <input type="text" id="jobs-tech-input" placeholder="Tech Stack" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
+          <select id="jobs-type-input" class="header-input" style="flex: 1; min-width: 0; padding: 2px 6px; height: 22px;" onchange="reloadJobs()">
+            <option value="">All Types</option>
+            <option value="full_time">Full-time</option>
+            <option value="contract">Contract</option>
+            <option value="part_time">Part-time</option>
+            <option value="internship">Internship</option>
+          </select>
+          <button class="btn btn-sm" onclick="resetJobFilters()" style="padding: 2px 8px; font-size: 11px;">Reset</button>
         </div>
         <div class="card-body" id="jobs-body">
           <div class="loading"><div class="spinner"></div> Querying Remotive…</div>

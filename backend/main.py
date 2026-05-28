@@ -132,9 +132,40 @@ def get_issues(owner: str = "withcoral", repo: str = "coral"):
         f"WHERE i.owner = '{owner}' AND i.repo = '{repo}' AND i.state = 'open' AND i.assignee__login IS NULL "
         f"AND i.comments < 5 "
         f"AND i.title NOT IN (SELECT p.title FROM github.pulls p WHERE p.owner = '{owner}' AND p.repo = '{repo}' AND p.state = 'open') "
-        f"ORDER BY i.created_at DESC LIMIT 15"
+        f"ORDER BY i.created_at DESC LIMIT 25"
     )
     data = run_coral(sql)
+    
+    # PR Collision Filter: Retrieve open pulls and filter out issues that are referenced
+    import re
+    try:
+        pulls_sql = f"SELECT title, body FROM github.pulls WHERE owner = '{owner}' AND repo = '{repo}' AND state = 'open' LIMIT 100"
+        pulls = run_coral(pulls_sql)
+        pull_texts = []
+        for p in pulls:
+            t = (p.get("title") or "").lower()
+            b = (p.get("body") or "").lower()
+            pull_texts.append(f"{t} {b}")
+            
+        filtered_data = []
+        for item in data:
+            issue_num = item.get("number")
+            if not issue_num:
+                filtered_data.append(item)
+                continue
+            
+            pattern = re.compile(rf"(?:\b|#){issue_num}\b")
+            collision = False
+            for text in pull_texts:
+                if pattern.search(text):
+                    collision = True
+                    break
+            if not collision:
+                filtered_data.append(item)
+        data = filtered_data[:15]
+    except Exception as e:
+        print(f"PR collision filter error: {e}")
+        data = data[:15]
     
     from datetime import datetime
     for item in data:
@@ -151,6 +182,7 @@ def get_issues(owner: str = "withcoral", repo: str = "coral"):
         item["quality_score"] = max(0, min(100, int(score)))
 
     return {"source": "github", "query": sql, "data": data}
+
 
 
 # ─── Workspace Tracker (GitHub PRs) ─────────────────────────────────────
@@ -209,23 +241,71 @@ async def get_contributions(user: str = "vinayaksonthalia"):
     return {"data": prs}
 
 
+class ResumeTipsRequest(BaseModel):
+    prs: list
+
+@app.post("/api/resume_tips")
+def get_resume_tips(req: ResumeTipsRequest):
+    if not req.prs:
+        return {"tips": [
+            "Contributed to open source projects, including resolving issues and submitting pull requests.",
+            "Collaborated with open-source maintainers on code reviews and pull request feedback."
+        ]}
+        
+    pr_titles = [f"- {pr.get('title')} (#{pr.get('number')}) in {pr.get('owner', 'withcoral')}/{pr.get('repo', 'coral')}" for pr in req.prs]
+    prs_str = "\n".join(pr_titles)
+    
+    prompt = f"""
+    Based on the following GitHub pull requests I have authored, generate 3-4 professional, impact-oriented resume bullet points that I can add to my resume.
+    Focus on technical actions, outcomes, and software engineering terms.
+    Keep the bullet points clean and concise, suitable for direct copy-pasting. Do not include introductory or concluding remarks.
+    
+    My Pull Requests:
+    {prs_str}
+    """
+    
+    try:
+        from google import generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        lines = [line.strip().lstrip("-").strip() for line in text.split("\n") if line.strip()]
+        tips = [line for line in lines[:4] if len(line) > 10]
+        return {"tips": tips}
+    except Exception as e:
+        print(f"Resume tips generation error: {e}")
+        default_tips = []
+        for pr in req.prs[:3]:
+            default_tips.append(f"Authored and merged pull request '{pr.get('title')}' in {pr.get('owner')}/{pr.get('repo')} to improve core functionality.")
+        default_tips.append("Collaborated with open source community maintainers to test, validate, and document new features.")
+        return {"tips": default_tips}
+
+
+
 # ─── Jobs (Remotive) ───────────────────────────────────────────────────
 @app.get("/api/jobs")
-def get_jobs(search: str = "", category: str = "Software Development"):
+def get_jobs(search: str = "", category: str = "Software Development", location: str = "", tech: str = "", job_type: str = ""):
+    conditions = []
     if search:
-        sql = (
-            f"SELECT title, company_name, url, tags, publication_date, "
-            f"candidate_required_location, salary, job_type "
-            f"FROM remotive.jobs "
-            f"WHERE search = '{search}' LIMIT 15"
-        )
+        conditions.append(f"search = '{search}'")
     else:
-        sql = (
-            f"SELECT title, company_name, url, tags, publication_date, "
-            f"candidate_required_location, salary, job_type "
-            f"FROM remotive.jobs "
-            f"WHERE category = '{category}' LIMIT 15"
-        )
+        conditions.append(f"category = '{category}'")
+    
+    if location:
+        conditions.append(f"candidate_required_location LIKE '%{location}%'")
+    if tech:
+        conditions.append(f"tags LIKE '%{tech}%'")
+    if job_type:
+        conditions.append(f"job_type = '{job_type}'")
+        
+    where_clause = " AND ".join(conditions)
+    sql = (
+        f"SELECT title, company_name, url, tags, publication_date, "
+        f"candidate_required_location, salary, job_type "
+        f"FROM remotive.jobs "
+        f"WHERE {where_clause} LIMIT 15"
+    )
     return {"source": "remotive", "query": sql, "data": run_coral(sql)}
 
 
