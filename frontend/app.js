@@ -180,50 +180,149 @@ function toggleTheme() {
 }
 
 // ─── Load: Issues (GitHub) ─────────────────────────────────────────
+// ─── Live Dynamic Multi-Repo OSS Issues ─────────────────────────────
+let issueRepos = JSON.parse(localStorage.getItem("issueRepos")) || ["withcoral/coral"];
+
+function saveIssueRepos() {
+  localStorage.setItem("issueRepos", JSON.stringify(issueRepos));
+}
+
+function renderRepoBadges() {
+  const activeBox = document.getElementById("issues-active-repos");
+  if (!activeBox) return;
+  activeBox.innerHTML = issueRepos.map(r => `
+    <span class="source-badge" style="border-color: var(--accent-light); padding: 2px 8px; font-size: 10px; display: inline-flex; align-items: center; gap: 6px; background: var(--bg-elevated);">
+      ${esc(r)}
+      <span onclick="deleteIssueRepo('${esc(r)}')" style="cursor: pointer; font-weight: bold; color: var(--pink); margin-left: 4px; font-size: 12px;">×</span>
+    </span>
+  `).join("");
+}
+
+function addIssueRepo() {
+  const input = document.getElementById("issues-new-repo-input");
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  if (!val.includes("/")) {
+    alert("Please enter repository in owner/repo format (e.g. facebook/react).");
+    return;
+  }
+  if (!issueRepos.includes(val)) {
+    issueRepos.push(val);
+    saveIssueRepos();
+    input.value = "";
+    loadIssues();
+  }
+}
+
+function deleteIssueRepo(val) {
+  issueRepos = issueRepos.filter(r => r !== val);
+  if (issueRepos.length === 0) issueRepos = ["withcoral/coral"];
+  saveIssueRepos();
+  loadIssues();
+}
+
+let repoCollapsedStates = {};
+
+function toggleRepoIssueSection(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + "-arrow");
+  if (!el) return;
+  const isHidden = el.style.display === "none";
+  el.style.display = isHidden ? "block" : "none";
+  if (arrow) arrow.textContent = isHidden ? "▼" : "▶";
+  repoCollapsedStates[id] = !isHidden; // True if collapsed (was visible, now hidden)
+}
+
+function suggestMatch(owner, repo, title) {
+  document.getElementById("match-owner").value = owner;
+  document.getElementById("match-repo").value = repo;
+  
+  let tech = "react"; // Default fallback
+  const t = title.toLowerCase();
+  if (t.includes("python") || t.includes("fastapi")) tech = "python";
+  else if (t.includes("typescript") || t.includes("ts")) tech = "typescript";
+  else if (t.includes("javascript") || t.includes("js")) tech = "javascript";
+  else if (t.includes("supabase")) tech = "supabase";
+  else if (t.includes("telegram")) tech = "telegram";
+  else if (t.includes("adzuna")) tech = "adzuna";
+  else if (t.includes("remotive")) tech = "remotive";
+  else if (t.includes("hn") || t.includes("hackernews")) tech = "hackernews";
+  else if (t.includes("devto")) tech = "devto";
+  
+  document.getElementById("match-tech").value = tech;
+  loadMatches();
+  
+  // Smooth scroll
+  document.getElementById("match-card")?.scrollIntoView({ behavior: 'smooth' });
+}
+
 async function loadIssues() {
   const el = document.getElementById("issues-body");
-  const owner = document.getElementById("issue-owner-input").value.trim() || "withcoral";
-  const repo = document.getElementById("issue-repo-input").value.trim() || "coral";
+  if (!el) return;
+  
+  renderRepoBadges();
   
   startPanelTimeline("issues-body", [
     "🐙 Polling upstream GitHub REST endpoints...",
     "🔑 Validating project access parameters...",
     "📦 Unpacking repository issue nodes...",
-    "✅ Filtering out claimed assignments..."
+    "✅ Filtering out PR collisions..."
   ]);
 
+  let totalIssuesCount = 0;
+  let html = "";
+  
   try {
-    const res = await fetch(`${API}/issues?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`);
-    const json = await res.json();
-    const data = json.data || [];
-    document.getElementById("stat-issues").textContent = data.length;
-
-    stopPanelTimeline("issues-body");
-
-    if (!data.length) {
-      el.innerHTML = getEmptyStateHTML("No Open Issues Found", `No unassigned open issues exist on ${owner}/${repo}.`);
-      return;
+    for (const item of issueRepos) {
+      const [owner, repo] = item.split("/");
+      const repoId = `repo-section-${owner}-${repo}`.replace(/\./g, "-").replace(/\//g, "-");
+      
+      const res = await fetch(`${API}/issues?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`);
+      const json = await res.json();
+      const data = json.data || [];
+      totalIssuesCount += data.length;
+      
+      const isCollapsed = repoCollapsedStates[repoId] === true;
+      const displayStyle = isCollapsed ? "none" : "block";
+      const arrowChar = isCollapsed ? "▶" : "▼";
+      
+      html += `
+        <div class="repo-issue-section" style="margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-card);">
+          <div class="repo-issue-header" onclick="toggleRepoIssueSection('${repoId}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding: 10px 14px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);">
+            <span style="font-weight:600; font-size:12px; color: var(--text-primary);">📂 ${esc(owner)}/${esc(repo)}</span>
+            <div style="display:flex; align-items:center; gap: 8px;">
+              <span class="org-badge" style="font-size: 9px; padding: 2px 6px; background: var(--accent-glow); color: var(--accent-light); border-radius: 12px; border: 1px solid rgba(124, 108, 240, 0.2); font-weight: 600;">${data.length} issues</span>
+              <span class="repo-issue-arrow" id="${repoId}-arrow" style="font-size: 10px; color: var(--text-secondary); transition: transform 0.2s;">${arrowChar}</span>
+            </div>
+          </div>
+          <div class="repo-issue-body" id="${repoId}" style="display:${displayStyle}; padding: 10px;">
+            ${data.length === 0 ? `<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px;">🏝️ No unassigned open issues found.</div>` : 
+              data.map(d => `
+                <div class="data-row" onclick="suggestMatch('${esc(owner)}', '${esc(repo)}', '${esc(d.title)}')" style="cursor: pointer; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='none'">
+                  <div class="row-title" style="display:flex; justify-content:space-between; align-items:center; gap: 10px;">
+                    <a href="${esc(d.html_url)}" target="_blank" onclick="event.stopPropagation();" style="font-size: 12px; font-weight: 500;">${esc(d.title)}</a>
+                    <button class="btn btn-sm" style="padding:2px 6px; font-size:10px; flex-shrink: 0;" onclick="event.stopPropagation(); sendToTelegram(event, 'GitHub Bug', '${esc(d.title)}', '${esc(d.html_url)}', '#${d.number || ''}')">✈️ Send</button>
+                  </div>
+                  <div class="row-meta" style="margin-top: 4px;">
+                    <span>👤 ${esc(d.user__login || d.user_login)}</span>
+                    <span>💬 ${d.comments || 0}</span>
+                    <span>🕐 ${timeAgo(d.created_at)}</span>
+                    <span>#${d.number || ""}</span>
+                    ${d.quality_score !== undefined ? `<span class="quality-badge" style="background: ${d.quality_score >= 80 ? 'rgba(74, 222, 128, 0.12)' : 'rgba(240, 150, 92, 0.12)'}; color: ${d.quality_score >= 80 ? 'var(--green)' : 'var(--orange)'}; font-weight: 700; padding: 1px 5px; border-radius: 4px; font-size: 9px; border: 1px solid ${d.quality_score >= 80 ? 'var(--green)40' : 'var(--orange)40'}">🎯 ${d.quality_score}% Match</span>` : ''}
+                  </div>
+                </div>
+              `).join("")
+            }
+          </div>
+        </div>
+      `;
     }
-
-    el.innerHTML = data
-      .map(
-        (d) => `
-      <div class="data-row">
-        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <a href="${esc(d.html_url)}" target="_blank">${esc(d.title)}</a>
-          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'GitHub Bug', '${esc(d.title)}', '${esc(d.html_url)}', '#${d.number || ''}')">✈️ Send</button>
-        </div>
-        <div class="row-meta">
-          <span>👤 ${esc(d.user__login || d.user_login)}</span>
-          <span>💬 ${d.comments || 0}</span>
-          <span>🕐 ${timeAgo(d.created_at)}</span>
-          <span>#${d.number || ""}</span>
-          ${d.quality_score !== undefined ? `<span class="quality-badge" style="background: ${d.quality_score >= 80 ? 'rgba(74, 222, 128, 0.12)' : 'rgba(240, 150, 92, 0.12)'}; color: ${d.quality_score >= 80 ? 'var(--green)' : 'var(--orange)'}; font-weight: 700; padding: 1px 5px; border-radius: 4px; font-size: 10px;">🎯 ${d.quality_score}% Match</span>` : ''}
-        </div>
-      </div>`
-      )
-      .join("");
-
+    
+    stopPanelTimeline("issues-body");
+    el.innerHTML = html;
+    document.getElementById("stat-issues").textContent = totalIssuesCount;
+    
   } catch (err) {
     stopPanelTimeline("issues-body");
     el.innerHTML = `<div class="error-msg">Failed to load issues: ${esc(err.message)}</div>`;
@@ -326,19 +425,59 @@ async function loadJobs() {
 
     el.innerHTML = data
       .map(
-        (d) => `
-      <div class="data-row">
-        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a>
-          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Remotive Job', '${esc(d.title)}', '${esc(d.url)}', '${esc(d.company_name)}')">✈️ Send</button>
-        </div>
-        <div class="row-meta">
-          <span>🏢 ${esc(d.company_name)}</span>
-          <span>📍 ${esc(truncate(d.candidate_required_location, 30))}</span>
-          <span>📅 ${timeAgo(d.publication_date)}</span>
-        </div>
-        ${renderTags(d.tags, 6)}
-      </div>`
+        (d) => {
+          // Relevance scoring calculations
+          const userTech = ["react", "python", "javascript", "fastapi", "telegram", "adzuna", "hn", "devto", "github", "typescript", "node"];
+          let score = 50;
+          
+          if (d.tags) {
+            const tagsList = d.tags.toLowerCase().split(",").map(t => t.trim());
+            const matches = tagsList.filter(t => userTech.some(ut => t.includes(ut) || ut.includes(t)));
+            score += matches.length * 15;
+          }
+          
+          const loc = (d.candidate_required_location || "").toLowerCase();
+          if (loc.includes("worldwide") || loc.includes("anywhere") || loc.includes("remote")) {
+            score += 20;
+          } else if (loc.includes("india") || loc.includes("apac")) {
+            score += 15;
+          }
+          
+          const pubDate = d.publication_date ? new Date(d.publication_date).getTime() : 0;
+          if (pubDate) {
+            const ageDays = (Date.now() - pubDate) / (1000 * 60 * 60 * 24);
+            if (ageDays < 3) score += 15;
+            else if (ageDays < 7) score += 10;
+            else if (ageDays < 14) score += 5;
+          }
+          
+          score = Math.max(0, Math.min(100, Math.round(score)));
+          
+          let badgeText = "🎯 Match";
+          let badgeColor = "var(--text-secondary)";
+          if (score >= 80) {
+            badgeText = "🎯 High Match";
+            badgeColor = "var(--green)";
+          } else if (score >= 60) {
+            badgeText = "🎯 Good Match";
+            badgeColor = "var(--blue)";
+          }
+          
+          return `
+          <div class="data-row">
+            <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Remotive Job', '${esc(d.title)}', '${esc(d.url)}', '${esc(d.company_name)}')">✈️ Send</button>
+            </div>
+            <div class="row-meta">
+              <span>🏢 ${esc(d.company_name)}</span>
+              <span>📍 ${esc(truncate(d.candidate_required_location, 30))}</span>
+              <span>📅 ${timeAgo(d.publication_date)}</span>
+              <span class="quality-badge" style="background: var(--glass); color: ${badgeColor}; font-weight: 700; padding: 1px 5px; border-radius: 4px; font-size: 9px; border: 1px solid ${badgeColor}40;">${badgeText} (${score}%)</span>
+            </div>
+            ${renderTags(d.tags, 6)}
+          </div>`;
+        }
       )
       .join("");
 
@@ -1087,6 +1226,8 @@ async function forgotPassword(event) {
 }
 
 // ─── Live Dynamic Contributions Grid & Org Grouping ──────────────────
+let loadedContributions = [];
+
 async function loadContributions() {
   const el = document.getElementById("contributions-wrapper");
   if (!el) return;
@@ -1099,115 +1240,139 @@ async function loadContributions() {
   try {
     const res = await fetch(`${API}/contributions?user=${encodeURIComponent(user)}`);
     const json = await res.json();
-    const data = json.data || [];
+    loadedContributions = json.data || [];
 
-    if (!data.length) {
+    if (!loadedContributions.length) {
       el.innerHTML = getEmptyStateHTML("No Contributions Located", "Verify GitHub PAT permissions and username.");
       return;
     }
 
-    // Group PRs by "owner/repo"
-    const groups = {};
-    data.forEach((pr) => {
-      const key = `${pr.owner}/${pr.repo}`;
-      if (!groups[key]) {
-        groups[key] = { owner: pr.owner, repo: pr.repo, open: [], merged: [], closed: [] };
-      }
-      if (pr.state === "merged") {
-        groups[key].merged.push(pr);
-      } else if (pr.state === "open") {
-        groups[key].open.push(pr);
-      } else {
-        groups[key].closed.push(pr);
-      }
-    });
-
-    // Sort groups by total PR count descending
-    const sortedKeys = Object.keys(groups).sort((a, b) => {
-      const countA = groups[a].open.length + groups[a].merged.length + groups[a].closed.length;
-      const countB = groups[b].open.length + groups[b].merged.length + groups[b].closed.length;
-      return countB - countA;
-    });
-
-    // Render grouped layout
-    el.innerHTML = sortedKeys.map((key) => {
-      const g = groups[key];
-      const total = g.open.length + g.merged.length + g.closed.length;
-      const id = "org-group-" + key.replace("/", "-");
-      
-      return `
-        <div class="org-group">
-          <div class="org-header" onclick="toggleOrgGroup('${id}')">
-            <span class="org-name">📂 ${esc(key)}</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="org-badge">${total} PRs</span>
-              <span class="org-arrow" id="${id}-arrow">▶</span>
-            </div>
-          </div>
-          <div class="org-body" id="${id}" style="display: none;">
-            ${g.merged.length > 0 ? `
-              <div class="pr-subsection">
-                <div class="pr-subsection-title">✅ Merged (${g.merged.length})</div>
-                <div class="pr-grid">
-                  ${g.merged.map(pr => `
-                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-merged">
-                      <span class="pr-icon">✈️</span>
-                      <div class="pr-info">
-                        <div class="pr-card-title">${esc(pr.title)}</div>
-                        <div class="pr-card-meta">PR #${pr.number} (Merged)</div>
-                      </div>
-                    </a>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
-            
-            ${g.open.length > 0 ? `
-              <div class="pr-subsection">
-                <div class="pr-subsection-title">⚡ Open (${g.open.length})</div>
-                <div class="pr-grid">
-                  ${g.open.map(pr => `
-                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-open">
-                      <span class="pr-icon">🕒</span>
-                      <div class="pr-info">
-                        <div class="pr-card-title">${esc(pr.title)}</div>
-                        <div class="pr-card-meta">PR #${pr.number} (Active)</div>
-                      </div>
-                    </a>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
-            
-            ${g.closed.length > 0 ? `
-              <div class="pr-subsection">
-                <div class="pr-subsection-title">🛑 Closed/Unmerged (${g.closed.length})</div>
-                <div class="pr-grid">
-                  ${g.closed.map(pr => `
-                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-closed">
-                      <span class="pr-icon">🛑</span>
-                      <div class="pr-info">
-                        <div class="pr-card-title">${esc(pr.title)}</div>
-                        <div class="pr-card-meta">PR #${pr.number} (Closed)</div>
-                      </div>
-                    </a>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    // Auto expand the first group by default
-    if (sortedKeys.length > 0) {
-      const firstId = "org-group-" + sortedKeys[0].replace("/", "-");
-      toggleOrgGroup(firstId);
-    }
-
+    filterContributions();
   } catch (e) {
     el.innerHTML = `<div class="error-msg">Failed to load contributions: ${esc(e.message)}</div>`;
+  }
+}
+
+function filterContributions() {
+  const org = document.getElementById("contrib-org-filter")?.value.trim().toLowerCase() || "";
+  const sort = document.getElementById("contrib-sort-filter")?.value || "all";
+  
+  let data = [...loadedContributions];
+  
+  if (org) {
+    data = data.filter(pr => `${pr.owner}/${pr.repo}`.toLowerCase().includes(org));
+  }
+  
+  if (sort !== "all") {
+    data = data.filter(pr => pr.state === sort);
+  }
+  
+  renderContributionsList(data);
+}
+
+function renderContributionsList(data) {
+  const el = document.getElementById("contributions-wrapper");
+  if (!el) return;
+  
+  if (!data.length) {
+    el.innerHTML = getEmptyStateHTML("No Contributions Match", "Try adjusting your search query or sorting options.");
+    return;
+  }
+  
+  const groups = {};
+  data.forEach((pr) => {
+    const key = `${pr.owner}/${pr.repo}`;
+    if (!groups[key]) {
+      groups[key] = { owner: pr.owner, repo: pr.repo, open: [], merged: [], closed: [] };
+    }
+    if (pr.state === "merged") {
+      groups[key].merged.push(pr);
+    } else if (pr.state === "open") {
+      groups[key].open.push(pr);
+    } else {
+      groups[key].closed.push(pr);
+    }
+  });
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    const countA = groups[a].open.length + groups[a].merged.length + groups[a].closed.length;
+    const countB = groups[b].open.length + groups[b].merged.length + groups[b].closed.length;
+    return countB - countA;
+  });
+
+  el.innerHTML = sortedKeys.map((key) => {
+    const g = groups[key];
+    const total = g.open.length + g.merged.length + g.closed.length;
+    const id = "org-group-" + key.replace("/", "-");
+    
+    return `
+      <div class="org-group">
+        <div class="org-header" onclick="toggleOrgGroup('${id}')">
+          <span class="org-name">📂 ${esc(key)}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="org-badge">${total} PRs</span>
+            <span class="org-arrow" id="${id}-arrow">▶</span>
+          </div>
+        </div>
+        <div class="org-body" id="${id}" style="display: none;">
+          ${g.merged.length > 0 ? `
+            <div class="pr-subsection">
+              <div class="pr-subsection-title">✅ Merged (${g.merged.length})</div>
+              <div class="pr-grid">
+                ${g.merged.map(pr => `
+                  <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-merged">
+                    <span class="pr-icon">✈️</span>
+                    <div class="pr-info">
+                      <div class="pr-card-title">${esc(pr.title)}</div>
+                      <div class="pr-card-meta">PR #${pr.number} (Merged)</div>
+                    </div>
+                  </a>
+                `).join("")}
+              </div>
+            </div>
+          ` : ""}
+          
+          ${g.open.length > 0 ? `
+            <div class="pr-subsection">
+              <div class="pr-subsection-title">⚡ Open (${g.open.length})</div>
+              <div class="pr-grid">
+                ${g.open.map(pr => `
+                  <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-open">
+                    <span class="pr-icon">🕒</span>
+                    <div class="pr-info">
+                      <div class="pr-card-title">${esc(pr.title)}</div>
+                      <div class="pr-card-meta">PR #${pr.number} (Active)</div>
+                    </div>
+                  </a>
+                `).join("")}
+              </div>
+            </div>
+          ` : ""}
+          
+          ${g.closed.length > 0 ? `
+            <div class="pr-subsection">
+              <div class="pr-subsection-title">🛑 Closed/Unmerged (${g.closed.length})</div>
+              <div class="pr-grid">
+                ${g.closed.map(pr => `
+                  <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-closed">
+                    <span class="pr-icon">🛑</span>
+                    <div class="pr-info">
+                      <div class="pr-card-title">${esc(pr.title)}</div>
+                      <div class="pr-card-meta">PR #${pr.number} (Closed)</div>
+                    </div>
+                  </a>
+                `).join("")}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (sortedKeys.length > 0) {
+    const firstId = "org-group-" + sortedKeys[0].replace("/", "-");
+    toggleOrgGroup(firstId);
   }
 }
 

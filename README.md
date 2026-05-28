@@ -137,7 +137,11 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 ## 🗺️ Roadmap v2 (Future Vision)
 To expand ContriMatch into an enterprise-grade workspace for professional open-source engineers, the next release cycle will introduce:
-*   **Multi-Repository Tracking Grid**: Add an interactive interface (with a `+` input button) allowing contributors to monitor unassigned issues and PR collisions across multiple repositories and organizations simultaneously.
-*   **Collapsible Org Sorting & Search**: Integrate live filter search bars inside the contributions accordion section to easily filter merge states across dozens of different upstream repositories.
-*   **Full Resume Compiler & Enhancer**: Upgrade the plain-text Resume Advisor into a comprehensive builder. Support PDF/DOCX file uploads, parse existing resumes, and use Gemini to dynamically append and enhance bullet points as new open-source code is merged.
+*   **Multi-Repository Tracking**: Allow tracking multiple custom repositories (`owner/repo`) concurrently in collapsible dashboard sections.
+*   **Org Filter & Status Sorting**: Instant local filtering and search parameters to partition merged, active open, or closed pull requests across dozens of repositories.
+*   **Job Match Relevance Scoring**: Dynamic relevance score badge (`🎯 High Match`, `🎯 Good Match`, `🎯 Match`) based on technology matching, publication recency, and geography limitations.
+*   **AI Resume Compiler & Enhancer**: Support uploading PDF/DOCX resumes, parsing skills, and automatically appending newly merged contributions directly.
+*   **StackOverflow Integration**: Connect local compilation issues and repository errors to community Q&A and answers.
+*   **LinkedIn Jobs Crawling**: Seamlessly query and index corporate roles directly from LinkedIn job feeds.
+*   **GitLab Issues Support**: Provide complete compatibility with GitLab repositories, issues, and merge requests.
 

@@ -72,13 +72,18 @@
           <div class="card-title">
             <span class="icon">📋</span>
             <h3>OSS Issues</h3>
-            <input type="text" id="issue-owner-input" value="withcoral" class="header-input" style="width: 70px;" onkeydown="if(event.key==='Enter') reloadIssues()">
-            <input type="text" id="issue-repo-input" value="coral" class="header-input" style="width: 50px;" onkeydown="if(event.key==='Enter') reloadIssues()">
           </div>
           <button class="reload-card-btn" onclick="loadIssues()" title="Reload Panel">↻</button>
           <span class="card-source">GitHub</span>
         </div>
-        <div class="card-body" id="issues-body">
+        <div class="card-body-filters" style="display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);">
+          <div style="display: flex; gap: 6px; width: 100%; align-items: center;">
+            <input type="text" id="issues-new-repo-input" placeholder="Add repo (owner/repo)" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') addIssueRepo()">
+            <button class="btn btn-sm" onclick="addIssueRepo()" style="padding: 2px 8px; font-size: 11px;">+</button>
+          </div>
+          <div id="issues-active-repos" style="display: flex; gap: 4px; flex-wrap: wrap; width: 100%;"></div>
+        </div>
+        <div class="card-body" id="issues-body" style="max-height: 480px; overflow-y: auto;">
           <div class="loading"><div class="spinner"></div> Querying GitHub…</div>
         </div>
       </div>
@@ -276,6 +281,15 @@
       <p class="ask-subtitle" style="margin-bottom: 16px;">
         I actively help construct Coral database specifications. Here are the live, dynamically fetched contributions and pull requests authored by <span id="contribution-user-label" style="font-weight: 600; color: var(--accent-light);">vinayaksonthalia</span> across organizations:
       </p>
+      <div class="contributions-filters" style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; max-width: 450px;">
+        <input type="text" id="contrib-org-filter" placeholder="Filter by repository/org (e.g. coral)..." class="header-input" style="flex: 1; min-width: 0; padding: 4px 10px;" oninput="filterContributions()">
+        <select id="contrib-sort-filter" class="header-input" style="width: 140px; padding: 2px 6px; height: 24px;" onchange="filterContributions()">
+          <option value="all">All Statuses</option>
+          <option value="merged">Merged Only</option>
+          <option value="open">Open Only</option>
+          <option value="closed">Closed Only</option>
+        </select>
+      </div>
       <div id="contributions-wrapper">
         <div class="loading"><div class="spinner"></div> Syncing GitHub contribution specifications…</div>
       </div>
