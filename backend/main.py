@@ -130,7 +130,8 @@ def get_issues(owner: str = "withcoral", repo: str = "coral"):
         f"SELECT i.title, i.user__login, i.state, i.created_at, i.html_url, i.comments, i.number "
         f"FROM github.issues i "
         f"WHERE i.owner = '{owner}' AND i.repo = '{repo}' AND i.state = 'open' AND i.assignee__login IS NULL "
-        f"AND i.comments < 5 "
+        f"AND i.comments < 3 "
+        f"AND i.html_url NOT LIKE '%/pull/%' "
         f"AND i.title NOT IN (SELECT p.title FROM github.pulls p WHERE p.owner = '{owner}' AND p.repo = '{repo}' AND p.state = 'open') "
         f"ORDER BY i.created_at DESC LIMIT 25"
     )
