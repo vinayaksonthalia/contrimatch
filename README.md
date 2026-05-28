@@ -45,7 +45,7 @@ ContriMatch operates as a reactive hub coordinating multi-source data extraction
                       │                 ContriMatch                  │
                       │         "Omnichannel OSS Career Agent"       │
                       ├──────────┬──────────────┬────────────────────┤
-                      │  🌐 UI   │  🤖 NL→SQL   │  ✈️ Telegram Bot    │
+                      │  🌐 UI   │  🤖 NL→SQL   │  ✈️ Telegram Bot   │
                       │  Web App │  (Self-Heal) │  (Polling Thread)  │
                       ├──────────┴──────────────┴────────────────────┤
                       │           Python FastAPI (port 8000)         │
