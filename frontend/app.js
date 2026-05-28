@@ -1394,23 +1394,52 @@ function toggleOrgGroup(id) {
 // ─── Initialize ────────────────────────────────────────────────────
 let currentPrsForTips = [];
 
-async function showResumeTips() {
+function toggleResumeInput() {
+  const inputContainer = document.getElementById("resume-input-container");
+  const tipsContainer = document.getElementById("workspace-tips-container");
+  if (!inputContainer) return;
+  
+  const isHidden = inputContainer.style.display === "none";
+  inputContainer.style.display = isHidden ? "flex" : "none";
+  
+  if (isHidden) {
+    const saved = localStorage.getItem("resumeText") || "";
+    const textarea = document.getElementById("resume-text-input");
+    if (textarea) textarea.value = saved;
+  } else {
+    if (tipsContainer) tipsContainer.style.display = "none";
+  }
+}
+
+function clearResumeText() {
+  const textarea = document.getElementById("resume-text-input");
+  if (textarea) textarea.value = "";
+  localStorage.removeItem("resumeText");
+  const tipsContainer = document.getElementById("workspace-tips-container");
+  if (tipsContainer) tipsContainer.style.display = "none";
+}
+
+async function analyzeResume() {
+  const textarea = document.getElementById("resume-text-input");
+  const resumeText = textarea ? textarea.value.trim() : "";
+  
+  // Save to localStorage
+  localStorage.setItem("resumeText", resumeText);
+  
   const container = document.getElementById("workspace-tips-container");
   if (!container) return;
   
-  if (container.style.display === "block") {
-    container.style.display = "none";
-    return;
-  }
-  
   container.style.display = "block";
-  container.innerHTML = `<div class="loading" style="padding: 10px 0;"><div class="spinner"></div> Gemini is generating bullet points...</div>`;
+  container.innerHTML = `<div class="loading" style="padding: 10px 0;"><div class="spinner"></div> Gemini is analyzing resume & contributions...</div>`;
   
   try {
     const res = await fetch(`${API}/resume_tips`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prs: currentPrsForTips })
+      body: JSON.stringify({
+        prs: currentPrsForTips,
+        resume_text: resumeText
+      })
     });
     
     if (!res.ok) {
@@ -1422,15 +1451,18 @@ async function showResumeTips() {
     
     if (tips.length === 0) {
       container.innerHTML = `
-        <div style="font-weight: 700; margin-bottom: 8px;">📄 AI Resume Suggestions</div>
-        <div style="font-size: 11px; color: var(--text-secondary);">No contributions detected yet to generate bullet points. Start by submitting a PR!</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+          <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Recommendations</span>
+          <button class="close-btn" onclick="document.getElementById('workspace-tips-container').style.display='none'" style="font-size: 16px; padding: 2px 8px; background:transparent; border:none; cursor:pointer;">×</button>
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); text-align: left; line-height: 1.4;">No missing contributions detected. Your resume looks fully updated with your workspace contributions!</div>
       `;
       return;
     }
     
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-        <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Bullet Points</span>
+        <span style="font-weight: 700; color: var(--accent-light);">📄 AI Resume Recommendations</span>
         <button class="close-btn" onclick="document.getElementById('workspace-tips-container').style.display='none'" style="font-size: 16px; padding: 2px 8px; background:transparent; border:none; cursor:pointer;">×</button>
       </div>
       <ul style="margin: 0; padding-left: 16px; color: var(--text-primary); display: flex; flex-direction: column; gap: 8px; list-style-type: disc; text-align: left;">
@@ -1439,7 +1471,7 @@ async function showResumeTips() {
       <div style="font-size: 9px; color: var(--text-muted); margin-top: 10px; text-align: right;">Generated dynamically using Gemini</div>
     `;
   } catch (e) {
-    container.innerHTML = `<div class="error-msg" style="font-size: 11px; padding: 10px 0;">Error generating tips: ${esc(e.message)}</div>`;
+    container.innerHTML = `<div class="error-msg" style="font-size: 11px; padding: 10px 0;">Error analyzing resume: ${esc(e.message)}</div>`;
   }
 }
 

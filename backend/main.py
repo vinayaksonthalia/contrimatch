@@ -189,7 +189,7 @@ def get_issues(owner: str = "withcoral", repo: str = "coral"):
 @app.get("/api/workspace")
 def get_workspace(user: str = "vinayaksonthalia"):
     sql = (
-        f"SELECT title, state, created_at, html_url, number "
+        f"SELECT title, state, created_at, html_url, number, owner, repo "
         f"FROM github.pulls "
         f"WHERE owner = 'withcoral' AND repo = 'coral' AND user__login = '{user}' "
         f"ORDER BY created_at DESC LIMIT 5"
@@ -243,6 +243,7 @@ async def get_contributions(user: str = "vinayaksonthalia"):
 
 class ResumeTipsRequest(BaseModel):
     prs: list
+    resume_text: str = ""
 
 @app.post("/api/resume_tips")
 def get_resume_tips(req: ResumeTipsRequest):
@@ -252,23 +253,65 @@ def get_resume_tips(req: ResumeTipsRequest):
             "Collaborated with open-source maintainers on code reviews and pull request feedback."
         ]}
         
-    pr_titles = [f"- {pr.get('title')} (#{pr.get('number')}) in {pr.get('owner', 'withcoral')}/{pr.get('repo', 'coral')}" for pr in req.prs]
+    # Robustly parse owner/repo details to fix None/None issues
+    pr_titles = []
+    for pr in req.prs:
+        title = pr.get('title') or 'Contribution'
+        number = pr.get('number') or ''
+        owner = pr.get('owner')
+        repo = pr.get('repo')
+        
+        # Fallback to extracting from html_url if owner/repo are missing or literal string 'None'
+        if not owner or not repo or str(owner) == 'None' or str(repo) == 'None':
+            html_url = pr.get('html_url') or ''
+            if html_url:
+                parts = html_url.split('/')
+                if len(parts) > 4:
+                    owner = parts[3]
+                    repo = parts[4]
+        
+        owner = owner or 'withcoral'
+        repo = repo or 'coral'
+        pr_titles.append(f"- {title} (#{number}) in {owner}/{repo}")
+        
     prs_str = "\n".join(pr_titles)
     
-    prompt = f"""
-    Based on the following GitHub pull requests I have authored, generate 3-4 professional, impact-oriented resume bullet points that I can add to my resume.
-    Focus on technical actions, outcomes, and software engineering terms.
-    Keep the bullet points clean and concise, suitable for direct copy-pasting. Do not include introductory or concluding remarks.
-    
-    My Pull Requests:
-    {prs_str}
-    """
+    if req.resume_text.strip():
+        prompt = f"""
+        You are an expert resume parser and technical reviewer.
+        
+        Compare the candidate's Resume Text against their actual GitHub Pull Requests listed below.
+        Identify which of their contributions/pull requests are NOT mentioned or covered in their current Resume Text.
+        For each missing contribution, output a specific suggestion advising them to add it.
+        Each suggestion should be in the format: "Your [Specific Component/Feature] (PR #[PR Number]) in [Owner]/[Repo] is not mentioned in your resume — add this bullet: [Generate a professional, impact-oriented bullet point describing the contribution in active tense, detailing what was built, using proper software engineering terminology]."
+        
+        Generate 3-4 specific suggestions. If all contributions are already covered, return an empty response.
+        Keep the suggestions clean and concise, suitable for direct display. Do not include introductory or concluding remarks.
+        
+        Resume Text:
+        {req.resume_text}
+        
+        GitHub Pull Requests:
+        {prs_str}
+        """
+    else:
+        prompt = f"""
+        Based on the following GitHub pull requests I have authored, generate 3-4 professional, impact-oriented resume bullet points that I can add to my resume.
+        Focus on technical actions, outcomes, and software engineering terms.
+        Keep the bullet points clean and concise, suitable for direct copy-pasting. Do not include introductory or concluding remarks.
+        
+        My Pull Requests:
+        {prs_str}
+        """
     
     try:
-        from google import generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
-        response = model.generate_content(prompt)
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+        )
         text = response.text.strip()
         lines = [line.strip().lstrip("-").strip() for line in text.split("\n") if line.strip()]
         tips = [line for line in lines[:4] if len(line) > 10]
@@ -277,7 +320,21 @@ def get_resume_tips(req: ResumeTipsRequest):
         print(f"Resume tips generation error: {e}")
         default_tips = []
         for pr in req.prs[:3]:
-            default_tips.append(f"Authored and merged pull request '{pr.get('title')}' in {pr.get('owner')}/{pr.get('repo')} to improve core functionality.")
+            # Fallback parsing for defaults too
+            title = pr.get('title') or 'Contribution'
+            number = pr.get('number') or ''
+            owner = pr.get('owner')
+            repo = pr.get('repo')
+            if not owner or not repo or str(owner) == 'None' or str(repo) == 'None':
+                html_url = pr.get('html_url') or ''
+                if html_url:
+                    parts = html_url.split('/')
+                    if len(parts) > 4:
+                        owner = parts[3]
+                        repo = parts[4]
+            owner = owner or 'withcoral'
+            repo = repo or 'coral'
+            default_tips.append(f"Authored and merged pull request '{title}' (#{number}) in {owner}/{repo} to improve core functionality.")
         default_tips.append("Collaborated with open source community maintainers to test, validate, and document new features.")
         return {"tips": default_tips}
 

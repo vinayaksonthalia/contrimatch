@@ -96,12 +96,24 @@
             <h3>My Workspace</h3>
             <input type="text" id="workspace-user-input" value="vinayaksonthalia" class="header-input" style="width: 105px;" onkeydown="if(event.key==='Enter') reloadWorkspace()">
           </div>
-          <button class="reload-card-btn" onclick="showResumeTips()" title="Get AI Resume Tips" style="margin-right: 5px; color: var(--accent-light);">📄</button>
           <button class="reload-card-btn" onclick="loadWorkspace()" title="Reload Panel">↻</button>
           <span class="card-source" style="background: var(--accent-glow); color: var(--accent-light);">Profile</span>
         </div>
         <div class="card-body" id="workspace-body">
           <div class="loading"><div class="spinner"></div> Syncing pull requests…</div>
+        </div>
+        <div style="padding: 10px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn btn-sm" id="resume-tips-btn" onclick="toggleResumeInput()" style="width: 100%; justify-content: center; gap: 6px; font-size: 11px;">📄 Resume Tips</button>
+          
+          <!-- Expandable Resume Input area -->
+          <div id="resume-input-container" style="display: none; flex-direction: column; gap: 8px; margin-top: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-input);">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-align: left;">Paste your current Resume text:</label>
+            <textarea id="resume-text-input" placeholder="Paste your resume text here to analyze and find missing contributions..." style="width: 100%; height: 100px; font-size: 11px; padding: 8px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--bg-base); color: var(--text-primary); resize: vertical; outline: none; font-family: var(--font-sans);"></textarea>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-sm" onclick="analyzeResume()" style="flex: 1; padding: 4px 8px; font-size: 11px;">Analyze & Improve</button>
+              <button class="btn btn-sm" onclick="clearResumeText()" style="padding: 4px 8px; font-size: 11px; background: rgba(224, 92, 124, 0.1); color: var(--pink); border-color: rgba(224, 92, 124, 0.2);">Clear</button>
+            </div>
+          </div>
         </div>
         <div id="workspace-tips-container" style="display: none; padding: 14px; background: rgba(124, 108, 240, 0.08); border-top: 1px solid var(--border); font-size: 12px; animation: fadeUp 0.3s ease both;"></div>
       </div>
