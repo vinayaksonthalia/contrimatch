@@ -11,27 +11,29 @@ Unlike conventional wrappers that simply query existing database endpoints, **Co
 | Source / Spec | Pull Request / Branch | Purpose | Status |
 |:---|:---|:---|:---|
 | **Telegram** | [PR #863](https://github.com/withcoral/coral/pull/863) | Enabled real-time bidirectional updates, message polling, and chat synchronization. | **Merged / Released** |
+| **Google Contacts** | [PR #846](https://github.com/withcoral/coral/pull/846) | Added unified Google Contacts source, address list mapping, and search query rules. | **Merged / Released** |
 | **Adzuna** | [PR #815](https://github.com/withcoral/coral/pull/815) | Created the `adzuna.search_jobs` table function for worldwide job aggregation. | **Merged / Released** |
-| **Remotive** | [PR #685](https://github.com/withcoral/coral/pull/685) | Enabled structured remote job metadata queries and tags extraction. | **Merged / Released** |
-| **HackerNews** | [PR #803](https://github.com/withcoral/coral/pull/803) | Integrated Algolia search indexes, story scoring, comments count, and search query filters. | **Merged / Released** |
 | **DEV.to** | [PR #811](https://github.com/withcoral/coral/pull/811) | Added dev article querying, reaction sorting, and author username indices. | **Merged / Released** |
-| **PokeAPI** | `feat/source-pokeapi` | Pokémon metadata search, characteristics extraction, and stats mapping. | **Released** |
-| **Frankfurter** | `feat/source-frankfurter` | Real-time currency exchange rates and historical price transformations. | **Released** |
-| **REST Countries** | `feat/source-rest-countries` | Unified worldwide country registry (borders, regions, codes, and population metadata). | **Released** |
-| **OpenLibrary** | `feat/source-openlibrary` | Book search, author registry details, and subject search parameters integration. | **Released** |
-| **CoinGecko** | `feat/source-coingecko` | Live cryptocurrency market pricing, coin lists, and volume tracking. | **Released** |
-| **CoinCap** | `feat/source-coincap` | Token rate translations, exchange listings, and history graphs. | **Released** |
-| **Open-Meteo** | `feat/source-open-meteo` | Live weather parameters, daily projections, and coordinate search. | **Released** |
-| **Google Keep** | `feat/source-google-keep` | Google Keep API notes listing, sync, and keyword search. | **Released** |
-| **Google Classroom** | `feat/source-google-classroom` | Student courses, lists, assignments, and curriculum status. | **Released** |
-| **Google Chat** | `feat/source-google-chat` | Chat space directories, message history, and incoming webhook triggers. | **Released** |
-| **Google Ads** | `feat/source-google-ads` | Campaign metrics, budgets, and ad group performance reporting. | **Released** |
-| **Google Contacts** | `feat/source-google-contacts` | User contact cards list, organization groupings, and email search. | **Released** |
-| **Ghost CMS** | `feat/source-ghost` | Administrative blog metrics, posts list, and page layouts extraction. | **Released** |
-| **Chuck Norris Jokes** | `feat/source-chucknorris` | Dynamic category joke resolver and random text matching. | **Released** |
-| **Free Dictionary** | `feat/source-free-dictionary` | Term definition resolver, synonyms, audio phonetics, and grammar tags. | **Released** |
-| **Public Holidays** | `feat/source-public-holidays` | Country-wide holiday schedules, localized names, and global date alignments. | **Released** |
-| **HackerNews Tables** | `feat/source-hn-tables` | Custom table mappings and schema specifications for HN articles. | **Released** |
+| **HackerNews** | [PR #803](https://github.com/withcoral/coral/pull/803) | Integrated Algolia search indexes, story scoring, comments count, and search query filters. | **Merged / Released** |
+| **Open-Meteo** | [PR #786](https://github.com/withcoral/coral/pull/786) | Live weather parameters, daily projections, and coordinate search. | **Merged / Released** |
+| **CoinGecko** | [PR #781](https://github.com/withcoral/coral/pull/781) | Live cryptocurrency market pricing, coin lists, and volume tracking. | **Merged / Released** |
+| **OpenLibrary** | [PR #780](https://github.com/withcoral/coral/pull/780) | Book search, author registry details, and subject search parameters integration. | **Merged / Released** |
+| **Free Dictionary** | [PR #779](https://github.com/withcoral/coral/pull/779) | Term definition resolver, synonyms, audio phonetics, and grammar tags. | **Merged / Released** |
+| **Public Holidays** | [PR #775](https://github.com/withcoral/coral/pull/775) | Country-wide holiday schedules, localized names, and global date alignments. | **Merged / Released** |
+| **Frankfurter** | [PR #772](https://github.com/withcoral/coral/pull/772) | Real-time currency exchange rates and historical price transformations. | **Merged / Released** |
+| **Chuck Norris Jokes** | [PR #770](https://github.com/withcoral/coral/pull/770) | Dynamic category joke resolver and random text matching. | **Merged / Released** |
+| **PokeAPI** | [PR #767](https://github.com/withcoral/coral/pull/767) | Pokémon metadata search, characteristics extraction, and stats mapping. | **Merged / Released** |
+| **REST Countries** | [PR #765](https://github.com/withcoral/coral/pull/765) | Unified worldwide country registry (borders, regions, codes, and population metadata). | **Merged / Released** |
+| **Ghost CMS** | [PR #713](https://github.com/withcoral/coral/pull/713) | Administrative blog metrics, posts list, and page layouts extraction. | **Merged / Released** |
+| **HackerNews Docs** | [PR #712](https://github.com/withcoral/coral/pull/712) | Added comprehensive HN integration manuals and source specification READMEs. | **Merged / Released** |
+| **Remotive** | [PR #685](https://github.com/withcoral/coral/pull/685) | Enabled structured remote job metadata queries and tags extraction. | **Merged / Released** |
+| **Google Ads** | [PR #854](https://github.com/withcoral/coral/pull/854) | Campaign metrics, budgets, and ad group performance reporting. | **Active / Open** |
+| **Google Classroom** | [PR #852](https://github.com/withcoral/coral/pull/852) | Student courses, lists, assignments, and curriculum status. | **Active / Open** |
+| **Google Chat** | [PR #850](https://github.com/withcoral/coral/pull/850) | Chat space directories, message history, and incoming webhook triggers. | **Active / Open** |
+| **Google Keep** | [PR #848](https://github.com/withcoral/coral/pull/848) | Google Keep API notes listing, sync, and keyword search. | **Active / Open** |
+| **CoinCap** | `feat/source-coincap` | Token rate translations, exchange listings, and history graphs. | **Local Branch** |
+| **HackerNews Tables** | `feat/source-hn-tables` | Custom table mappings and schema specifications for HN articles. | **Local Branch** |
+
 
 ---
 
