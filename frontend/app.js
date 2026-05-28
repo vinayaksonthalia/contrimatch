@@ -7,6 +7,17 @@ const API = "http://localhost:8000/api";
 
 let currentAskResults = null;
 let showRawJson = false;
+let loadedNews = [];
+let loadedArticles = [];
+let remotiveJobsCount = 0;
+let adzunaJobsCount = 0;
+
+function updateJobsStat() {
+  const el = document.getElementById("stat-jobs");
+  if (el) {
+    el.textContent = remotiveJobsCount + adzunaJobsCount;
+  }
+}
 
 // Global scope track map to protect against interval layering
 const activeTimelines = {};
@@ -42,16 +53,23 @@ async function sendDigest() {
 // ─── Live Adzuna Integration Panel ───────────────────────────────────
 async function loadAdzuna() {
   const el = document.getElementById("adzuna-body");
-  const what = document.getElementById("adzuna-query-input").value.trim() || "developer";
+  const keyword = document.getElementById("adzuna-query-input")?.value.trim() || "";
+  const location = document.getElementById("adzuna-location-input")?.value.trim() || "";
+  const jobType = document.getElementById("adzuna-type-input")?.value.trim() || "";
+
+  // Concatenate cleanly handling spacing and trimming
+  const what = `${keyword} ${location} ${jobType}`.trim() || "developer";
 
   startPanelTimeline("adzuna-body", ["💼 Initializing Adzuna lookup criteria...", "🌐 Polling global category indices..."]);
   try {
     const res = await fetch(`${API}/adzuna?what=${encodeURIComponent(what)}`);
     const json = await res.json();
     const data = json.data || [];
+    adzunaJobsCount = data.length;
+    updateJobsStat();
     stopPanelTimeline("adzuna-body");
 
-    if (!data.length) { el.innerHTML = getEmptyStateHTML("No Openings Found", "Try altering structural tags."); return; }
+    if (!data.length) { el.innerHTML = getEmptyStateHTML("No Openings Found", "Try altering search terms or location."); return; }
     el.innerHTML = data.map(d => `
       <div class="data-row">
         <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -64,6 +82,16 @@ async function loadAdzuna() {
   } catch (err) { stopPanelTimeline("adzuna-body"); el.innerHTML = `<div class="error-msg">${esc(err.message)}</div>`; }
 }
 function reloadAdzuna() { loadAdzuna(); }
+
+function resetAdzunaFilters() {
+  const query = document.getElementById("adzuna-query-input");
+  const loc = document.getElementById("adzuna-location-input");
+  const type = document.getElementById("adzuna-type-input");
+  if (query) query.value = "developer";
+  if (loc) loc.value = "";
+  if (type) type.value = "";
+  loadAdzuna();
+}
 
 
 // ─── Utility: safe HTML escape ─────────────────────────────────────
@@ -414,7 +442,8 @@ async function loadJobs() {
     const res = await fetch(url);
     const json = await res.json();
     const data = json.data || [];
-    document.getElementById("stat-jobs").textContent = data.length;
+    remotiveJobsCount = data.length;
+    updateJobsStat();
 
     stopPanelTimeline("jobs-body");
 
@@ -515,32 +544,50 @@ async function loadNews() {
   try {
     const res = await fetch(`${API}/news?topic=${encodeURIComponent(topic)}`);
     const json = await res.json();
-    const data = json.data || [];
+    loadedNews = json.data || [];
 
     stopPanelTimeline("news-body");
-
-    if (!data.length) {
-      el.innerHTML = getEmptyStateHTML("No Stories Found", `No HackerNews articles matched topic '${topic}'.`);
-      return;
-    }
-
-    el.innerHTML = data
-      .map(
-        (d) => `
-      <div class="data-row">
-        <div class="row-title"><a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a></div>
-        <div class="row-meta">
-          <span>▲ ${d.points || 0} pts</span>
-          <span>💬 ${d.num_comments || 0}</span>
-          <span>👤 ${esc(d.author)}</span>
-        </div>
-      </div>`
-      )
-      .join("");
+    renderNewsList();
   } catch (err) {
     stopPanelTimeline("news-body");
     el.innerHTML = `<div class="error-msg">Failed to load news: ${esc(err.message)}</div>`;
   }
+}
+
+function renderNewsList() {
+  const el = document.getElementById("news-body");
+  if (!el) return;
+  const sort = document.getElementById("news-sort-input")?.value || "points";
+
+  let data = [...loadedNews];
+  if (sort === "points") {
+    data.sort((a, b) => (b.points || 0) - (a.points || 0));
+  } else if (sort === "date") {
+    data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }
+
+  if (!data.length) {
+    el.innerHTML = getEmptyStateHTML("No Stories Found", "Try altering topic tags.");
+    return;
+  }
+
+  el.innerHTML = data
+    .map(
+      (d) => `
+    <div class="data-row">
+      <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a>
+        <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'HackerNews Story', '${esc(d.title)}', '${esc(d.url)}', 'author: ${esc(d.author)}')">✈️ Send</button>
+      </div>
+      <div class="row-meta">
+        <span>▲ ${d.points || 0} pts</span>
+        <span>💬 ${d.num_comments || 0}</span>
+        <span>👤 ${esc(d.author)}</span>
+        ${d.created_at ? `<span>🕐 ${timeAgo(d.created_at)}</span>` : ""}
+      </div>
+    </div>`
+    )
+    .join("");
 }
 
 async function reloadHN() {
@@ -561,33 +608,50 @@ async function loadArticles() {
   try {
     const res = await fetch(`${API}/articles?tag=${encodeURIComponent(tag)}`);
     const json = await res.json();
-    const data = json.data || [];
+    loadedArticles = json.data || [];
 
     stopPanelTimeline("articles-body");
-
-    if (!data.length) {
-      el.innerHTML = getEmptyStateHTML("No Articles Found", `No DEV.to articles matched tag '${tag}'.`);
-      return;
-    }
-
-    el.innerHTML = data
-      .map(
-        (d) => `
-      <div class="data-row">
-        <div class="row-title"><a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a></div>
-        <div class="row-meta">
-          <span>❤️ ${d.positive_reactions_count || 0}</span>
-          <span>💬 ${d.comments_count || 0}</span>
-          <span>👤 ${esc(d.author_username)}</span>
-          <span>📖 ${d.reading_time_minutes || "?"}m read</span>
-        </div>
-      </div>`
-      )
-      .join("");
+    renderArticlesList();
   } catch (err) {
     stopPanelTimeline("articles-body");
     el.innerHTML = `<div class="error-msg">Failed to load articles: ${esc(err.message)}</div>`;
   }
+}
+
+function renderArticlesList() {
+  const el = document.getElementById("articles-body");
+  if (!el) return;
+  const sort = document.getElementById("articles-sort-input")?.value || "reactions";
+
+  let data = [...loadedArticles];
+  if (sort === "reactions") {
+    data.sort((a, b) => (b.positive_reactions_count || 0) - (a.positive_reactions_count || 0));
+  } else if (sort === "comments") {
+    data.sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0));
+  }
+
+  if (!data.length) {
+    el.innerHTML = getEmptyStateHTML("No Articles Found", "Try altering search tag.");
+    return;
+  }
+
+  el.innerHTML = data
+    .map(
+      (d) => `
+    <div class="data-row">
+      <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a>
+        <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Dev Article', '${esc(d.title)}', '${esc(d.url)}', 'author: ${esc(d.author_username)}')">✈️ Send</button>
+      </div>
+      <div class="row-meta">
+        <span>❤️ ${d.positive_reactions_count || 0}</span>
+        <span>💬 ${d.comments_count || 0}</span>
+        <span>👤 ${esc(d.author_username)}</span>
+        <span>📖 ${d.reading_time_minutes || "?"}m read</span>
+      </div>
+    </div>`
+    )
+    .join("");
 }
 
 async function reloadDevTo() {

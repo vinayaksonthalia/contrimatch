@@ -1,6 +1,6 @@
 # 🌌 ContriMatch — Omnichannel Personal OSS Career Agent
 
-> **ContriMatch v11.1.0** is an omnichannel open-source career agent that automatically bridges the gap between active open-source repositories and global hiring markets. By utilizing **Coral** (the declarative multi-source SQL engine) and **Gemini 2.5 Flash**, it helps you locate unassigned open-source issues, verify them against active pull request collisions, match them to live job opportunities, and deliver dynamic alerts directly to your phone.
+> **ContriMatch v11.2.0** is an omnichannel open-source career agent that automatically bridges the gap between active open-source repositories and global hiring markets. By utilizing **Coral** (the declarative multi-source SQL engine) and **Gemini 2.5/3.5**, it helps you locate unassigned open-source issues, verify them against active pull request collisions, match them to live job opportunities, analyze your resume, and deliver dynamic alerts directly to your phone.
 
 ---
 
@@ -33,7 +33,6 @@ Unlike conventional wrappers that simply query existing database endpoints, **Co
 | **Google Keep** | [PR #848](https://github.com/withcoral/coral/pull/848) | Google Keep API notes listing, sync, and keyword search. | **Active / Open** |
 | **CoinCap** | `feat/source-coincap` | Token rate translations, exchange listings, and history graphs. | **Local Branch** |
 | **HackerNews Tables** | `feat/source-hn-tables` | Custom table mappings and schema specifications for HN articles. | **Local Branch** |
-
 
 ---
 
@@ -70,7 +69,7 @@ ContriMatch normalizes and joins 6 distinct data feeds across core and community
 
 ### 2. 🧠 Autonomous Self-Healing Agent Core
 The `/api/ask` route executes a resilient natural language interface.
-1.  **Intent Translation**: Generates raw Coral SQL from plain English using `gemini-2.5-flash`.
+1.  **Intent Translation**: Generates raw Coral SQL from plain English using `gemini-3.5-flash`.
 2.  **Compilation Interception**: If the generated SQL fails due to structural or validation errors in the Coral CLI, the exception is caught.
 3.  **Self-Correction Loop**: The raw error log is fed back into Gemini with the original question. The agent autonomously heals the SQL syntax and executes the corrected query, delivering zero-crash reliability during live demos.
 
@@ -84,6 +83,21 @@ To ensure contributors only spend time on high-value, claimable issues, the engi
 *   **No Claimed Assignments**: Hides issues already assigned (`assignee__login IS NULL`).
 *   **No Clutter/Debate**: Filters out topics with high noise (`comments < 5`) to target easy-to-claim tickets.
 *   **No Active PR Collisions**: Employs a nested subquery filter (`i.title NOT IN (SELECT p.title FROM github.pulls p WHERE state = 'open')`) to skip issues where someone has already submitted an open pull request.
+
+---
+
+## ⚡ Key Live Features
+
+*   **Multi-Repository OSS Issues Tracker**: Add/remove multiple repositories (e.g. `facebook/react`, `supabase/supabase`) on the fly. Each repository renders its open unassigned issues in a collapsible, self-contained list, persisted across browser reloads using `localStorage`.
+*   **Organized Contribution Moat**: Displays a complete historical record of pull requests authored by the developer. Includes a search filter to instantly look up specific repositories/organizations (e.g. "coral") and a status sort dropdown (Merged / Open / Closed) to drill down into contribution history.
+*   **Job Match Relevance Scoring**: The Remotive Job board scores remote positions dynamically. Using technology stack, candidate location restrictions, and publication recency, it stamps jobs with a match score badge (e.g. `🎯 High Match (95%)` or `🎯 Good Match (75%)`).
+*   **Hybrid Search & Sort Controls**:
+    *   *HackerNews*: Search topic queries and sort results locally by `Top Points` or `Most Recent`.
+    *   *DEV.to*: Search tag queries and sort articles locally by `Most Reactions` or `Most Comments`.
+    *   *Adzuna*: Compose multi-parameter queries using Keyword, Location, and Job Type inputs, concatenated with clean spacing and `.trim()`.
+*   **Resume Advisor Chat Integration**: Paste your raw resume text into the Help Chat box. If the system detects a resume analysis intent, it routes the text to Gemini, compares it against your live pull requests in the workspace, and suggests high-impact bullet points to add.
+*   **Help Center & Presets Assistant**: A slide-in chat drawer with quick actions presets (Forgot Password, push digest configuration, filtering tutorials) and a conversational AI assistant.
+*   **Glassmorphic Dark/Light Mode**: Premium glassmorphic interface with HSL tailored variables, neon accents, and session theme persistence.
 
 ---
 
@@ -110,7 +124,7 @@ export GEMINI_API_KEY="AIzaSyYourGoogleAIStudioKey"
 export TELEGRAM_BOT_TOKEN="123456789:ABCdefYourTelegramBotKey"
 
 # Optional: Higher-quota production model
-export GEMINI_MODEL="gemini-2.5-flash" 
+export GEMINI_MODEL="gemini-3.5-flash" 
 ```
 
 > [!WARNING]
@@ -128,20 +142,11 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 ---
 
-## 🎨 Rich UI Features
-*   **Glassmorphic Dark/Light Mode**: Ambient glassmorphism with high-contrast neon accents, persistent across browser sessions using `localStorage` memory.
-*   **Subprocess Loading Timelines**: A micro-animated loading indicator displaying rotating text loops to indicate execution steps while the Coral CLI fetches data.
-*   **Reflective Visual Grid**: Symmetrical 3-column layout matching and formatting datasets from HackerNews, DEV.to, and Adzuna card clusters.
+## 🗺️ Roadmap v3 (Future Vision)
 
----
-
-## 🗺️ Roadmap v2 (Future Vision)
 To expand ContriMatch into an enterprise-grade workspace for professional open-source engineers, the next release cycle will introduce:
-*   **Multi-Repository Tracking**: Allow tracking multiple custom repositories (`owner/repo`) concurrently in collapsible dashboard sections.
-*   **Org Filter & Status Sorting**: Instant local filtering and search parameters to partition merged, active open, or closed pull requests across dozens of repositories.
-*   **Job Match Relevance Scoring**: Dynamic relevance score badge (`🎯 High Match`, `🎯 Good Match`, `🎯 Match`) based on technology matching, publication recency, and geography limitations.
-*   **AI Resume Compiler & Enhancer**: Support uploading PDF/DOCX resumes, parsing skills, and automatically appending newly merged contributions directly.
-*   **StackOverflow Integration**: Connect local compilation issues and repository errors to community Q&A and answers.
-*   **LinkedIn Jobs Crawling**: Seamlessly query and index corporate roles directly from LinkedIn job feeds.
-*   **GitLab Issues Support**: Provide complete compatibility with GitLab repositories, issues, and merge requests.
-
+*   **AI Auto-PR Drafter**: Suggest actual code edits for claimed issues and draft PRs automatically based on user's workspace history.
+*   **Automated Issue Claiming**: Secure issue claims on GitHub directly through the Telegram bot with a single button tap.
+*   **Multi-Platform Integrations**: Support for GitLab, Bitbucket, and private self-hosted Gitea instances.
+*   **Interactive Career Roadmapping**: Generate sequential learning paths based on target remote job vacancies and current skill gaps.
+*   **Indeed & LinkedIn Live Job Scraping**: Seamlessly connect enterprise jobs with open-source project issues.

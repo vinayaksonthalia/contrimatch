@@ -120,8 +120,8 @@
           <span class="card-source">Remotive</span>
         </div>
         <div class="card-body-filters" style="display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); align-items: center;">
-          <input type="text" id="jobs-location-input" placeholder="Location" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
-          <input type="text" id="jobs-tech-input" placeholder="Tech Stack" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
+          <input type="text" id="jobs-location-input" placeholder="Location (optional)" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
+          <input type="text" id="jobs-tech-input" placeholder="Tech (optional)" class="header-input" style="flex: 1; min-width: 0;" onkeydown="if(event.key==='Enter') reloadJobs()">
           <select id="jobs-type-input" class="header-input" style="flex: 1; min-width: 0; padding: 2px 6px; height: 22px;" onchange="reloadJobs()">
             <option value="">All Types</option>
             <option value="full_time">Full-time</option>
@@ -174,10 +174,16 @@
           <div class="card-title">
             <span class="icon">📰</span>
             <h3>Trending in Tech</h3>
-            <input type="text" id="news-topic-input" value="open source contributing" class="header-input" style="width: 150px;" onkeydown="if(event.key==='Enter') reloadHN()">
           </div>
           <button class="reload-card-btn" onclick="loadNews()" title="Reload Panel">↻</button>
           <span class="card-source">HackerNews</span>
+        </div>
+        <div class="card-body-filters" style="display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); align-items: center;">
+          <input type="text" id="news-topic-input" value="open source contributing" class="header-input" style="flex: 1; min-width: 0;" placeholder="Topic (optional)" onkeydown="if(event.key==='Enter') reloadHN()">
+          <select id="news-sort-input" class="header-input" style="width: 120px; padding: 2px 6px; height: 22px;" onchange="renderNewsList()">
+            <option value="points">Top Points</option>
+            <option value="date">Most Recent</option>
+          </select>
         </div>
         <div class="card-body" id="news-body">
           <div class="loading"><div class="spinner"></div> Querying HN…</div>
@@ -190,10 +196,16 @@
           <div class="card-title">
             <span class="icon">📝</span>
             <h3>Dev Articles</h3>
-            <input type="text" id="articles-tag-input" value="opensource" class="header-input" style="width: 90px;" onkeydown="if(event.key==='Enter') reloadDevTo()">
           </div>
           <button class="reload-card-btn" onclick="loadArticles()" title="Reload Panel">↻</button>
           <span class="card-source">DEV.to</span>
+        </div>
+        <div class="card-body-filters" style="display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); align-items: center;">
+          <input type="text" id="articles-tag-input" value="opensource" class="header-input" style="flex: 1; min-width: 0;" placeholder="Tag (optional)" onkeydown="if(event.key==='Enter') reloadDevTo()">
+          <select id="articles-sort-input" class="header-input" style="width: 120px; padding: 2px 6px; height: 22px;" onchange="renderArticlesList()">
+            <option value="reactions">Most Reactions</option>
+            <option value="comments">Most Comments</option>
+          </select>
         </div>
         <div class="card-body" id="articles-body">
           <div class="loading"><div class="spinner"></div> Querying DEV.to…</div>
@@ -206,10 +218,15 @@
           <div class="card-title">
             <span class="icon">💼</span>
             <h3>Adzuna Jobs</h3>
-            <input type="text" id="adzuna-query-input" value="developer" class="header-input" style="width: 100px;" onkeydown="if(event.key==='Enter') reloadAdzuna()">
           </div>
           <button class="reload-card-btn" onclick="loadAdzuna()" title="Reload Panel">↻</button>
           <span class="card-source">Adzuna</span>
+        </div>
+        <div class="card-body-filters" style="display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); align-items: center; flex-wrap: wrap;">
+          <input type="text" id="adzuna-query-input" value="developer" class="header-input" style="flex: 1.5; min-width: 0;" placeholder="Keyword (optional)" onkeydown="if(event.key==='Enter') reloadAdzuna()">
+          <input type="text" id="adzuna-location-input" placeholder="Location (optional)" class="header-input" style="flex: 1.2; min-width: 0;" onkeydown="if(event.key==='Enter') reloadAdzuna()">
+          <input type="text" id="adzuna-type-input" placeholder="Type (optional)" class="header-input" style="flex: 1;" onkeydown="if(event.key==='Enter') reloadAdzuna()">
+          <button class="btn btn-sm" onclick="resetAdzunaFilters()" style="padding: 2px 8px; font-size: 11px;">Reset</button>
         </div>
         <div class="card-body" id="adzuna-body">
           <div class="loading"><div class="spinner"></div> Querying Adzuna…</div>

@@ -419,7 +419,7 @@ def get_adzuna(what: str = "developer"):
 @app.get("/api/news")
 def get_news(topic: str = "open source contributing"):
     sql = (
-        f"SELECT title, url, points, num_comments, author "
+        f"SELECT title, url, points, num_comments, author, created_at "
         f"FROM hn.search "
         f"WHERE query = '{topic}' LIMIT 10"
     )
