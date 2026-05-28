@@ -132,3 +132,12 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 *   **Glassmorphic Dark/Light Mode**: Ambient glassmorphism with high-contrast neon accents, persistent across browser sessions using `localStorage` memory.
 *   **Subprocess Loading Timelines**: A micro-animated loading indicator displaying rotating text loops to indicate execution steps while the Coral CLI fetches data.
 *   **Reflective Visual Grid**: Symmetrical 3-column layout matching and formatting datasets from HackerNews, DEV.to, and Adzuna card clusters.
+
+---
+
+## 🗺️ Roadmap v2 (Future Vision)
+To expand ContriMatch into an enterprise-grade workspace for professional open-source engineers, the next release cycle will introduce:
+*   **Multi-Repository Tracking Grid**: Add an interactive interface (with a `+` input button) allowing contributors to monitor unassigned issues and PR collisions across multiple repositories and organizations simultaneously.
+*   **Collapsible Org Sorting & Search**: Integrate live filter search bars inside the contributions accordion section to easily filter merge states across dozens of different upstream repositories.
+*   **Full Resume Compiler & Enhancer**: Upgrade the plain-text Resume Advisor into a comprehensive builder. Support PDF/DOCX file uploads, parse existing resumes, and use Gemini to dynamically append and enhance bullet points as new open-source code is merged.
+
