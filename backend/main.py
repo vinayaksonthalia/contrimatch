@@ -806,6 +806,14 @@ def start_telegram_polling():
                         if not user_prompt or user_prompt.startswith("/"):
                             continue # Skip empty messages or standard slash routing commands
                             
+                        # Telegram guardrail check
+                        msg_words = [w.strip(".,!?;:()\"'").lower() for w in user_prompt.split()]
+                        if any(w in ['joke', 'story', 'poem', 'weather', 'cricket', 'movie', 'funny'] for w in msg_words):
+                            async with httpx.AsyncClient() as client:
+                                tgt = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+                                await client.post(tgt, json={"chat_id": chat_id, "text": "I can only help with OSS contributions, jobs, and tech news."})
+                            continue
+                            
                         # Route the plain text question through the autonomous ask core
                         ai_payload = ask_agent(AskRequest(question=user_prompt))
                         

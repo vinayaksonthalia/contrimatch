@@ -28,7 +28,7 @@ Unlike conventional wrappers that simply query existing database endpoints, **Co
 | **HackerNews Docs** | [PR #712](https://github.com/withcoral/coral/pull/712) | Added comprehensive HN integration manuals and source specification READMEs. | **Merged / Released** |
 | **Remotive** | [PR #685](https://github.com/withcoral/coral/pull/685) | Enabled structured remote job metadata queries and tags extraction. | **Merged / Released** |
 | **Google Ads** | [PR #854](https://github.com/withcoral/coral/pull/854) | Campaign metrics, budgets, and ad group performance reporting. | **Active / Open** |
-| **Google Classroom** | [PR #852](https://github.com/withcoral/coral/pull/852) | Student courses, lists, assignments, and curriculum status. | **Active / Open** |
+| **Google Classroom** | [PR #852](https://github.com/withcoral/coral/pull/852) | Student courses, lists, assignments, and curriculum status. | **Merged / Released** |
 | **Google Chat** | [PR #850](https://github.com/withcoral/coral/pull/850) | Chat space directories, message history, and incoming webhook triggers. | **Active / Open** |
 | **Google Keep** | [PR #848](https://github.com/withcoral/coral/pull/848) | Google Keep API notes listing, sync, and keyword search. | **Active / Open** |
 | **CoinCap** | `feat/source-coincap` | Token rate translations, exchange listings, and history graphs. | **Local Branch** |
