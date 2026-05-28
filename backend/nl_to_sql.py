@@ -44,7 +44,7 @@ Examples:
 2. Default LIMIT 10 unless user specifies otherwise
 3. Use table aliases (g=github, r=remotive, a=adzuna, h=hn, d=devto)
 4. Column separator in GitHub is double underscore: user__login NOT user_login
-5. For job searches, use remotive.jobs with category or search filter
+5. For job searches, use BOTH sources. First query remotive.jobs with search filter, then also query adzuna.search_jobs(what => '...'). If the user asks for jobs, generate a UNION query combining both sources like: SELECT title, company_name AS company, url FROM remotive.jobs WHERE search = 'python' UNION ALL SELECT title, company, redirect_url AS url FROM adzuna.search_jobs(what => 'python') LIMIT 10
 6. For any job search mentioning "adzuna", always utilize the adzuna.search_jobs(what => '...') table function. Never map adzuna requests to remotive.jobs. Remember to alias 'redirect_url AS url' to align with the schema. For cross-source JOINs involving remotive.jobs, the condition must use 'ON r.tags LIKE "%tech%"' instead of referencing 'r.search'. The 'search' filter is a query parameter function filter, not a queryable schema column.
 7. For tech news, always use the fully qualified table name hn.search with a query filter (e.g., SELECT title, url FROM hn.search WHERE query = 'open source' LIMIT 10). Never generate 'FROM hn' directly under any circumstances.
 8. For articles, use devto.articles with tag filter
