@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ContriMatch — Find OSS Contributions You Can Actually Solve</title>
+  <meta name="description" content="Personal agent powered by Coral SQL that matches your tech stack to open source issues, remote jobs, trending news, and dev articles across 4 live sources.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+</head>
+<body>
+
+  <!-- ─── Header ──────────────────────────────────────────────── -->
+  <header class="header" id="header">
+    <div class="logo">
+      <div class="logo-icon">C</div>
+      <div>
+        <h1>Contri<span>Match</span></h1>
+        <div class="header-subtitle">Find OSS contributions you can actually solve</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="source-badges">
+        <div class="source-badge"><span class="dot"></span> GitHub</div>
+        <div class="source-badge"><span class="dot"></span> Remotive</div>
+        <div class="source-badge"><span class="dot"></span> HackerNews</div>
+        <div class="source-badge"><span class="dot"></span> DEV.to</div>
+        <div class="source-badge" style="border-color: var(--teal-glow);"><span class="dot" style="background: var(--blue); box-shadow: 0 0 8px var(--blue);"></span> Telegram</div>
+        <div class="source-badge" style="border-color: var(--teal-glow);"><span class="dot" style="background: var(--orange); box-shadow: 0 0 8px var(--orange);"></span> Adzuna</div>
+      </div>
+      <button class="theme-toggle" id="digest-btn" onclick="sendDigest()">✈️ Push Digest</button>
+      <button class="theme-toggle" id="settings-btn" onclick="openSettings()">⚙️ Settings</button>
+      <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">☀️ Light</button>
+    </div>
+
+  </header>
+
+  <!-- ─── Main Content ────────────────────────────────────────── -->
+  <main class="container">
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-chip">
+        <span class="stat-value" id="stat-sources">6</span>
+        <span class="stat-label">Live Sources</span>
+      </div>
+
+      <div class="stat-chip">
+        <span class="stat-value" id="stat-issues">—</span>
+        <span class="stat-label">Issues</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-value" id="stat-jobs">—</span>
+        <span class="stat-label">Jobs</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-value" id="stat-joins">2</span>
+        <span class="stat-label">Cross-Source JOINs</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-value" id="stat-api">…</span>
+        <span class="stat-label">API</span>
+      </div>
+    </div>
+
+    <!-- Row 1: Issues + Workspace + Jobs (grid-3) -->
+    <div class="grid-3">
+
+      <!-- Unassigned Issues (GitHub) -->
+      <div class="card" id="issues-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">📋</span>
+            <h3>OSS Issues</h3>
+            <input type="text" id="issue-owner-input" value="withcoral" class="header-input" style="width: 70px;" onkeydown="if(event.key==='Enter') reloadIssues()">
+            <input type="text" id="issue-repo-input" value="coral" class="header-input" style="width: 50px;" onkeydown="if(event.key==='Enter') reloadIssues()">
+          </div>
+          <button class="reload-card-btn" onclick="loadIssues()" title="Reload Panel">↻</button>
+          <span class="card-source">GitHub</span>
+        </div>
+        <div class="card-body" id="issues-body">
+          <div class="loading"><div class="spinner"></div> Querying GitHub…</div>
+        </div>
+      </div>
+
+      <!-- Personal Active Workspace (GitHub) -->
+      <div class="card" id="workspace-card" style="border-color: var(--border-accent); background: linear-gradient(180deg, var(--bg-card), var(--accent-glow));">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">👤</span>
+            <h3>My Workspace</h3>
+            <input type="text" id="workspace-user-input" value="vinayaksonthalia" class="header-input" style="width: 105px;" onkeydown="if(event.key==='Enter') reloadWorkspace()">
+          </div>
+          <button class="reload-card-btn" onclick="loadWorkspace()" title="Reload Panel">↻</button>
+          <span class="card-source" style="background: var(--accent-glow); color: var(--accent-light);">Profile</span>
+        </div>
+        <div class="card-body" id="workspace-body">
+          <div class="loading"><div class="spinner"></div> Syncing pull requests…</div>
+        </div>
+      </div>
+
+      <!-- Jobs (Remotive) -->
+      <div class="card" id="jobs-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">💼</span>
+            <h3>Remote Jobs</h3>
+            <input type="text" id="jobs-category-input" value="Software Development" class="header-input" style="width: 130px;" onkeydown="if(event.key==='Enter') reloadJobs()">
+          </div>
+          <button class="reload-card-btn" onclick="loadJobs()" title="Reload Panel">↻</button>
+          <span class="card-source">Remotive</span>
+        </div>
+        <div class="card-body" id="jobs-body">
+          <div class="loading"><div class="spinner"></div> Querying Remotive…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cross-Source Match (wide) -->
+    <div class="grid-full">
+      <div class="card match-card" id="match-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">⚡</span>
+            <h3>Cross-Source Match — Issues × Jobs</h3>
+          </div>
+          <span class="card-source">GitHub × Remotive JOIN</span>
+        </div>
+        <div class="match-config">
+          <label>Owner:</label>
+          <input type="text" id="match-owner" value="facebook" placeholder="owner">
+          <label>Repo:</label>
+          <input type="text" id="match-repo" value="react" placeholder="repo">
+          <label>Tech:</label>
+          <input type="text" id="match-tech" value="react" placeholder="tech tag">
+          <button class="btn btn-sm" id="match-btn" onclick="loadMatches()">
+            <span class="btn-spinner"></span>
+            <span class="btn-text">Run JOIN</span>
+          </button>
+        </div>
+        <div class="card-body" id="match-body">
+          <div class="loading"><div class="spinner"></div> Running cross-source JOIN…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: News + Articles + Adzuna Jobs -->
+    <div class="grid-3">
+
+      <!-- Tech News (HackerNews) -->
+      <div class="card" id="news-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">📰</span>
+            <h3>Trending in Tech</h3>
+            <input type="text" id="news-topic-input" value="open source contributing" class="header-input" style="width: 150px;" onkeydown="if(event.key==='Enter') reloadHN()">
+          </div>
+          <button class="reload-card-btn" onclick="loadNews()" title="Reload Panel">↻</button>
+          <span class="card-source">HackerNews</span>
+        </div>
+        <div class="card-body" id="news-body">
+          <div class="loading"><div class="spinner"></div> Querying HN…</div>
+        </div>
+      </div>
+
+      <!-- Dev Articles (DEV.to) -->
+      <div class="card" id="articles-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">📝</span>
+            <h3>Dev Articles</h3>
+            <input type="text" id="articles-tag-input" value="opensource" class="header-input" style="width: 90px;" onkeydown="if(event.key==='Enter') reloadDevTo()">
+          </div>
+          <button class="reload-card-btn" onclick="loadArticles()" title="Reload Panel">↻</button>
+          <span class="card-source">DEV.to</span>
+        </div>
+        <div class="card-body" id="articles-body">
+          <div class="loading"><div class="spinner"></div> Querying DEV.to…</div>
+        </div>
+      </div>
+
+      <!-- Adzuna Jobs -->
+      <div class="card" id="adzuna-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">💼</span>
+            <h3>Adzuna Jobs</h3>
+            <input type="text" id="adzuna-query-input" value="developer" class="header-input" style="width: 100px;" onkeydown="if(event.key==='Enter') reloadAdzuna()">
+          </div>
+          <button class="reload-card-btn" onclick="loadAdzuna()" title="Reload Panel">↻</button>
+          <span class="card-source">Adzuna</span>
+        </div>
+        <div class="card-body" id="adzuna-body">
+          <div class="loading"><div class="spinner"></div> Querying Adzuna…</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Trending Cross-Source (HN × DEV.to) -->
+    <div class="grid-full">
+      <div class="card match-card" id="trending-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">🔥</span>
+            <h3>Trending Cross-Source — News × Articles</h3>
+          </div>
+          <span class="card-source">HN × DEV.to JOIN</span>
+        </div>
+        <div class="match-config">
+          <label>Topic:</label>
+          <input type="text" id="trending-topic" value="javascript" placeholder="topic">
+          <button class="btn btn-sm" id="trending-btn" onclick="loadTrending()">
+            <span class="btn-spinner"></span>
+            <span class="btn-text">Run JOIN</span>
+          </button>
+        </div>
+        <div class="card-body" id="trending-body">
+          <div class="loading"><div class="spinner"></div> Running cross-source JOIN…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ask ContriMatch (NL→SQL) -->
+    <div class="ask-section" id="ask-section">
+      <div class="ask-header">
+        <span class="robot">🤖</span>
+        <h2>Ask ContriMatch</h2>
+      </div>
+      <p class="ask-subtitle">Type a question in plain English — the agent converts it to Coral SQL, queries live sources, and returns answers.</p>
+      <div class="ask-input-row">
+        <input type="text" id="ask-input" placeholder='e.g. "Find React issues with matching remote jobs"' onkeydown="if(event.key==='Enter') askAgent()">
+        <button class="btn" id="ask-btn" onclick="askAgent()">
+          <span class="btn-spinner"></span>
+          <span class="btn-text">Ask</span>
+        </button>
+      </div>
+      <div class="presets">
+        <button class="preset" onclick="askPreset('Show me open issues in withcoral/coral')">Coral issues</button>
+        <button class="preset" onclick="askPreset('Find remote Python developer jobs')">Python jobs</button>
+        <button class="preset" onclick="askPreset('What is trending about security on HackerNews?')">Security news</button>
+        <button class="preset" onclick="askPreset('Show me popular open source articles on DEV.to')">OSS articles</button>
+        <button class="preset" onclick="askPreset('Find React open issues from facebook/react and matching React jobs on Remotive')">Issues × Jobs</button>
+      </div>
+      <div class="ask-result" id="ask-result">
+        <div class="sql-label">Generated Coral SQL</div>
+        <pre class="sql-display" id="ask-sql"></pre>
+        <div class="sql-label" style="margin-top:12px">Results (<span id="ask-count">0</span> rows)</div>
+        <div class="agent-results-wrapper" id="ask-data-wrapper"></div>
+      </div>
+    </div>
+
+    <!-- Dynamic Contributions Section -->
+    <div class="roadmap-section" style="margin-top: 30px; padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);">
+      <div class="ask-header" style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="icon" style="font-size: 22px;">🥇</span>
+          <h2 style="font-size: 18px; font-weight: 700;">My Core Coral Contributions</h2>
+        </div>
+        <button class="reload-card-btn" onclick="loadContributions()" title="Reload Contributions" style="margin: 0;">↻</button>
+      </div>
+      <p class="ask-subtitle" style="margin-bottom: 16px;">
+        I actively help construct Coral database specifications. Here are the live, dynamically fetched contributions and pull requests authored by <span id="contribution-user-label" style="font-weight: 600; color: var(--accent-light);">vinayaksonthalia</span> across organizations:
+      </p>
+      <div id="contributions-wrapper">
+        <div class="loading"><div class="spinner"></div> Syncing GitHub contribution specifications…</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <strong>ContriMatch</strong> — Built by Vinayak Sonthalia for the <a class="coral-link" href="https://withcoral.com" target="_blank">Pirates of the Coral-bean</a> Hackathon<br>
+    <span style="display:block; margin-top:6px; opacity:0.7;">
+      6 live sources · 3 I authored myself (Telegram, Adzuna, HN tables) · 2 cross-source JOINs · NL→SQL agent · Powered by <a class="coral-link" href="https://withcoral.com" target="_blank">Coral</a>
+    </span>
+
+  </footer>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ ContriMatch Settings</h3>
+        <button class="close-btn" onclick="closeSettings()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Set password (if setup is false) -->
+        <div id="settings-setup-step" style="display: none;">
+          <p class="modal-desc">Set a master settings password to secure your API tokens locally. If forgotten, you can recover it via your Telegram bot.</p>
+          <div class="form-group">
+            <label>Master Password:</label>
+            <input type="password" id="setup-password-input" placeholder="Enter new password">
+          </div>
+          <button class="btn" style="width: 100%; margin-top: 10px;" onclick="setupPassword()">Set Password</button>
+        </div>
+
+        <!-- Step 2: Unlock settings (if setup is true) -->
+        <div id="settings-unlock-step" style="display: none;">
+          <p class="modal-desc">Enter your master password to unlock and edit your keys.</p>
+          <div class="form-group">
+            <label>Master Password:</label>
+            <input type="password" id="unlock-password-input" placeholder="Enter password" onkeydown="if(event.key==='Enter') unlockSettings()">
+          </div>
+          <button class="btn" style="width: 100%; margin-top: 10px;" onclick="unlockSettings()">Unlock</button>
+          <div style="text-align: center; margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+            <a href="#" class="forgot-link" onclick="forgotPassword(event)">Forgot Password? (Recover via Telegram)</a>
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: 500;">Note: Send any message to your bot first, then click Forgot Password.</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Manage API Keys (if unlocked) -->
+        <div id="settings-manage-step" style="display: none;">
+          <p class="modal-desc">Update your API credentials in your local workspace. Updates will be saved to your local <code>.env</code> file.</p>
+          <div class="form-group">
+            <label>GitHub PAT Token (GITHUB_TOKEN):</label>
+            <input type="password" id="key-github-input" placeholder="ghp_...">
+          </div>
+          <div class="form-group">
+            <label>Gemini API Key (GEMINI_API_KEY):</label>
+            <input type="password" id="key-gemini-input" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group">
+            <label>Telegram Bot Token (TELEGRAM_BOT_TOKEN):</label>
+            <input type="password" id="key-telegram-input" placeholder="893195...">
+          </div>
+          <div class="form-group">
+            <label>Gemini AI Model (GEMINI_MODEL):</label>
+            <input type="text" id="key-model-input" placeholder="gemini-3.5-flash">
+          </div>
+          
+          <button class="btn" style="width: 100%; margin-top: 15px;" id="save-keys-btn" onclick="saveKeys()">Save Settings</button>
+          
+          <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
+          
+          <div class="card-title">
+            <span class="icon">🔒</span>
+            <h3>Change Master Password</h3>
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label>New Password:</label>
+            <input type="password" id="change-new-password" placeholder="Enter new password">
+          </div>
+          <button class="btn btn-sm" style="width: 100%; margin-top: 10px;" onclick="changePassword()">Change Password</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

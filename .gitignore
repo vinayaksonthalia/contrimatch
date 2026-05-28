@@ -1,0 +1,7 @@
+# Ignore API keys and local configuration files
+backend/.env
+backend/config.json
+backend/keys.json
+.DS_Store
+node_modules/
+dist/

@@ -1,0 +1,1233 @@
+/**
+ * ContriMatch — Frontend Application (Upgraded v11.0)
+ * Connects to FastAPI backend (port 8000) and renders Coral SQL results.
+ */
+
+const API = "http://localhost:8000/api";
+
+let currentAskResults = null;
+let showRawJson = false;
+
+// Global scope track map to protect against interval layering
+const activeTimelines = {};
+
+// ─── Native Telegram Brokers ──────────────────────────────────────────
+async function sendToTelegram(event, type, title, url, subtitle) {
+  event.stopPropagation();
+  event.preventDefault();
+  try {
+    const res = await fetch(`${API}/telegram/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, title, url, subtitle })
+    });
+    if (res.ok) alert("✈️ Record dispatched to Telegram Bot channel!");
+    else {
+      const err = await res.json();
+      alert(`⚠️ Hold: ${err.detail}`);
+    }
+  } catch (e) { alert(`Error: ${e.message}`); }
+}
+
+async function sendDigest() {
+  toggleElementLoading("digest-btn", true);
+  try {
+    const res = await fetch(`${API}/telegram/digest`);
+    if (res.ok) alert("🚀 Dynamic summary digest dispatched directly to Telegram!");
+    else alert("⚠️ Could not compile active update frames.");
+  } catch (e) { alert(`Error: ${e.message}`); }
+  finally { toggleElementLoading("digest-btn", false); }
+}
+
+// ─── Live Adzuna Integration Panel ───────────────────────────────────
+async function loadAdzuna() {
+  const el = document.getElementById("adzuna-body");
+  const what = document.getElementById("adzuna-query-input").value.trim() || "developer";
+
+  startPanelTimeline("adzuna-body", ["💼 Initializing Adzuna lookup criteria...", "🌐 Polling global category indices..."]);
+  try {
+    const res = await fetch(`${API}/adzuna?what=${encodeURIComponent(what)}`);
+    const json = await res.json();
+    const data = json.data || [];
+    stopPanelTimeline("adzuna-body");
+
+    if (!data.length) { el.innerHTML = getEmptyStateHTML("No Openings Found", "Try altering structural tags."); return; }
+    el.innerHTML = data.map(d => `
+      <div class="data-row">
+        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <a href="${esc(d.url)}" target="_blank">💼 ${esc(d.title)}</a>
+          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Adzuna Position', '${esc(d.title)}', '${esc(d.url)}', '${esc(d.company)}')">✈️ Send</button>
+        </div>
+        <div class="row-meta"><span>🏢 ${esc(d.company)}</span><span>📍 ${esc(d.location)}</span></div>
+      </div>
+    `).join("");
+  } catch (err) { stopPanelTimeline("adzuna-body"); el.innerHTML = `<div class="error-msg">${esc(err.message)}</div>`; }
+}
+function reloadAdzuna() { loadAdzuna(); }
+
+
+// ─── Utility: safe HTML escape ─────────────────────────────────────
+function esc(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ─── Utility: relative time ────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+// ─── Utility: truncate text ────────────────────────────────────────
+function truncate(str, max) {
+  if (!str) return "";
+  return str.length > max ? str.substring(0, max) + "…" : str;
+}
+
+// ─── Utility: render tag pills ─────────────────────────────────────
+function renderTags(tagStr, max) {
+  if (!tagStr) return "";
+  const tags = tagStr.split(",").map((t) => t.trim()).filter(Boolean).slice(0, max || 5);
+  return (
+    '<div class="tag-list">' +
+    tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("") +
+    "</div>"
+  );
+}
+
+// ─── Utility: Button Loading State Toggle ─────────────────────────
+function toggleElementLoading(buttonId, isLoading) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  btn.disabled = isLoading;
+  if (isLoading) {
+    btn.classList.add('loading');
+  } else {
+    btn.classList.remove('loading');
+  }
+}
+
+// ─── Utility: Timeline Loading State Rotation ──────────────────────
+function startPanelTimeline(elementId, customPipelines) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+
+  // Clear any existing active timer running on this specific node
+  if (activeTimelines[elementId]) {
+    clearInterval(activeTimelines[elementId]);
+  }
+
+  const pipelines = customPipelines || [
+    "📡 Initializing local Coral database workspace...",
+    "🐙 Synchronizing upstream GitHub project schemas...",
+    "💼 Mapping remote career parameters via Remotive API...",
+    "🧬 Resolving cross-source data constraints..."
+  ];
+  
+  let index = 0;
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> ${pipelines[0]}</div>`;
+
+  activeTimelines[elementId] = setInterval(() => {
+    index++;
+    const loader = container.querySelector(".loading");
+    if (loader) {
+      loader.innerHTML = `<div class="spinner"></div> ${pipelines[index % pipelines.length]}`;
+    }
+  }, 1200);
+}
+
+function stopPanelTimeline(elementId) {
+  if (activeTimelines[elementId]) {
+    clearInterval(activeTimelines[elementId]);
+    delete activeTimelines[elementId];
+  }
+}
+
+// ─── Utility: High-Fidelity Empty State Box ────────────────────────
+function getEmptyStateHTML(title = "No Matching Data Nodes Found", desc = "The sources compiled successfully, but no active records exist for this contextual filter.") {
+  return `
+    <div class="empty-state-box" style="text-align: center; padding: 40px 20px; border: 1px dashed var(--border); border-radius: var(--radius); margin: 10px 0;">
+      <div style="font-size: 26px; margin-bottom: 10px;">🏝️</div>
+      <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">${esc(title)}</div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">${esc(desc)}</div>
+    </div>
+  `;
+}
+
+// ─── Utility: Theme Toggle ─────────────────────────────────────────
+function toggleTheme() {
+  const body = document.body;
+  const btn = document.getElementById("theme-btn");
+  const isLight = body.classList.toggle("light-theme");
+  
+  if (isLight) {
+    btn.textContent = "🌙 Dark";
+    localStorage.setItem("theme", "light");
+  } else {
+    btn.textContent = "☀️ Light";
+    localStorage.setItem("theme", "dark");
+  }
+}
+
+// ─── Load: Issues (GitHub) ─────────────────────────────────────────
+async function loadIssues() {
+  const el = document.getElementById("issues-body");
+  const owner = document.getElementById("issue-owner-input").value.trim() || "withcoral";
+  const repo = document.getElementById("issue-repo-input").value.trim() || "coral";
+  
+  startPanelTimeline("issues-body", [
+    "🐙 Polling upstream GitHub REST endpoints...",
+    "🔑 Validating project access parameters...",
+    "📦 Unpacking repository issue nodes...",
+    "✅ Filtering out claimed assignments..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/issues?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`);
+    const json = await res.json();
+    const data = json.data || [];
+    document.getElementById("stat-issues").textContent = data.length;
+
+    stopPanelTimeline("issues-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Open Issues Found", `No unassigned open issues exist on ${owner}/${repo}.`);
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="data-row">
+        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <a href="${esc(d.html_url)}" target="_blank">${esc(d.title)}</a>
+          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'GitHub Bug', '${esc(d.title)}', '${esc(d.html_url)}', '#${d.number || ''}')">✈️ Send</button>
+        </div>
+        <div class="row-meta">
+          <span>👤 ${esc(d.user__login || d.user_login)}</span>
+          <span>💬 ${d.comments || 0}</span>
+          <span>🕐 ${timeAgo(d.created_at)}</span>
+          <span>#${d.number || ""}</span>
+          ${d.quality_score !== undefined ? `<span class="quality-badge" style="background: ${d.quality_score >= 80 ? 'rgba(74, 222, 128, 0.12)' : 'rgba(240, 150, 92, 0.12)'}; color: ${d.quality_score >= 80 ? 'var(--green)' : 'var(--orange)'}; font-weight: 700; padding: 1px 5px; border-radius: 4px; font-size: 10px;">🎯 ${d.quality_score}% Match</span>` : ''}
+        </div>
+      </div>`
+      )
+      .join("");
+
+  } catch (err) {
+    stopPanelTimeline("issues-body");
+    el.innerHTML = `<div class="error-msg">Failed to load issues: ${esc(err.message)}</div>`;
+  }
+}
+
+async function reloadIssues() {
+  loadIssues();
+}
+
+// ─── Load: Workspace (GitHub Pulls) ────────────────────────────────
+async function loadWorkspace() {
+  const el = document.getElementById("workspace-body");
+  const user = document.getElementById("workspace-user-input").value.trim() || "vinayaksonthalia";
+
+  startPanelTimeline("workspace-body", [
+    "🐙 Fetching active pull requests...",
+    "👤 Filtering on user_login context...",
+    "📂 Verifying check status and reviews...",
+    "✨ Compiling personal contribution stats..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/workspace?user=${encodeURIComponent(user)}`);
+    const json = await res.json();
+    const data = json.data || [];
+
+    stopPanelTimeline("workspace-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Workspace Branches", `No pull requests found for developer '${user}'.`);
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => {
+          let stateColor = d.state === 'closed' || d.state === 'merged' ? 'var(--teal)' : 'var(--blue)';
+          let statusIcon = d.state === 'closed' || d.state === 'merged' ? '✅' : '⚡';
+          
+          return `
+          <div class="data-row" style="border-left: 3px solid ${stateColor}; padding-left: 10px; margin-bottom: 6px; background: var(--glass);">
+            <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <a href="${esc(d.html_url)}" target="_blank">${statusIcon} ${esc(d.title)}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Pull Request', '${esc(d.title)}', '${esc(d.html_url)}', '#${d.number || ''}')">✈️ Send</button>
+            </div>
+            <div class="row-meta">
+              <span>#${d.number || ""}</span>
+              <span style="text-transform: uppercase; font-weight:700; color: ${stateColor}; font-size: 10px;">${esc(d.state)}</span>
+              <span>🕐 ${timeAgo(d.created_at)}</span>
+            </div>
+          </div>`;
+        }
+      )
+      .join("");
+
+  } catch (err) {
+    stopPanelTimeline("workspace-body");
+    el.innerHTML = `<div class="error-msg">Failed to sync workspace: ${esc(err.message)}</div>`;
+  }
+}
+
+async function reloadWorkspace() {
+  loadWorkspace();
+}
+
+// ─── Load: Jobs (Remotive) ─────────────────────────────────────────
+async function loadJobs() {
+  const el = document.getElementById("jobs-body");
+  const category = document.getElementById("jobs-category-input").value.trim() || "Software Development";
+
+  startPanelTimeline("jobs-body", [
+    "💼 Mapping remote career parameters...",
+    "🌐 Accessing Remotive API stream...",
+    "🏷️ Categorizing tags and coordinates...",
+    "🔍 Reindexing developer job listings..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/jobs?category=${encodeURIComponent(category)}`);
+    const json = await res.json();
+    const data = json.data || [];
+    document.getElementById("stat-jobs").textContent = data.length;
+
+    stopPanelTimeline("jobs-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Jobs Found", `No remote listings found under '${category}'.`);
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="data-row">
+        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a>
+          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Remotive Job', '${esc(d.title)}', '${esc(d.url)}', '${esc(d.company_name)}')">✈️ Send</button>
+        </div>
+        <div class="row-meta">
+          <span>🏢 ${esc(d.company_name)}</span>
+          <span>📍 ${esc(truncate(d.candidate_required_location, 30))}</span>
+          <span>📅 ${timeAgo(d.publication_date)}</span>
+        </div>
+        ${renderTags(d.tags, 6)}
+      </div>`
+      )
+      .join("");
+
+  } catch (err) {
+    stopPanelTimeline("jobs-body");
+    el.innerHTML = `<div class="error-msg">Failed to load jobs: ${esc(err.message)}</div>`;
+  }
+}
+
+async function reloadJobs() {
+  loadJobs();
+}
+
+// ─── Load: News (HackerNews) ───────────────────────────────────────
+async function loadNews() {
+  const el = document.getElementById("news-body");
+  const topic = document.getElementById("news-topic-input").value.trim() || "open source contributing";
+
+  startPanelTimeline("news-body", [
+    "📰 Accessing Algolia HackerNews indexes...",
+    "📈 Syncing trending story metadata...",
+    "▲ Compiling upvotes and discussion logs..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/news?topic=${encodeURIComponent(topic)}`);
+    const json = await res.json();
+    const data = json.data || [];
+
+    stopPanelTimeline("news-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Stories Found", `No HackerNews articles matched topic '${topic}'.`);
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="data-row">
+        <div class="row-title"><a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a></div>
+        <div class="row-meta">
+          <span>▲ ${d.points || 0} pts</span>
+          <span>💬 ${d.num_comments || 0}</span>
+          <span>👤 ${esc(d.author)}</span>
+        </div>
+      </div>`
+      )
+      .join("");
+  } catch (err) {
+    stopPanelTimeline("news-body");
+    el.innerHTML = `<div class="error-msg">Failed to load news: ${esc(err.message)}</div>`;
+  }
+}
+
+async function reloadHN() {
+  loadNews();
+}
+
+// ─── Load: Articles (DEV.to) ───────────────────────────────────────
+async function loadArticles() {
+  const el = document.getElementById("articles-body");
+  const tag = document.getElementById("articles-tag-input").value.trim() || "opensource";
+
+  startPanelTimeline("articles-body", [
+    "📝 Connecting to DEV.to content network...",
+    "🔖 Fetching tag-specific developer guides...",
+    "❤️ Indexing article reaction metrics..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/articles?tag=${encodeURIComponent(tag)}`);
+    const json = await res.json();
+    const data = json.data || [];
+
+    stopPanelTimeline("articles-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Articles Found", `No DEV.to articles matched tag '${tag}'.`);
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="data-row">
+        <div class="row-title"><a href="${esc(d.url)}" target="_blank">${esc(d.title)}</a></div>
+        <div class="row-meta">
+          <span>❤️ ${d.positive_reactions_count || 0}</span>
+          <span>💬 ${d.comments_count || 0}</span>
+          <span>👤 ${esc(d.author_username)}</span>
+          <span>📖 ${d.reading_time_minutes || "?"}m read</span>
+        </div>
+      </div>`
+      )
+      .join("");
+  } catch (err) {
+    stopPanelTimeline("articles-body");
+    el.innerHTML = `<div class="error-msg">Failed to load articles: ${esc(err.message)}</div>`;
+  }
+}
+
+async function reloadDevTo() {
+  loadArticles();
+}
+
+// ─── Load: Cross-Source Match (GitHub × Remotive JOIN) ─────────────
+async function loadMatches() {
+  const el = document.getElementById("match-body");
+  const owner = document.getElementById("match-owner").value.trim() || "facebook";
+  const repo = document.getElementById("match-repo").value.trim() || "react";
+  const tech = document.getElementById("match-tech").value.trim() || "react";
+
+  toggleElementLoading("match-btn", true);
+  startPanelTimeline("match-body", [
+    "📡 Initializing local Coral database workspace...",
+    "🐙 Polling live upstream GitHub REST endpoints...",
+    "💼 Extracting decoupled career schemas from Remotive API...",
+    "🧬 Weaving multi-tenant cross-source tables via SQL JOIN...",
+    "⚡ Resolving tags and constraints..."
+  ]);
+
+  try {
+    const res = await fetch(
+      `${API}/match?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&tech=${encodeURIComponent(tech)}`
+    );
+    const json = await res.json();
+    const data = json.data || [];
+
+    stopPanelTimeline("match-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Cross-Source Matches Found", "No unassigned issues matched tags on the remote jobs database.");
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="match-row">
+        <div class="match-side">
+          <div class="side-label">📋 Open Issue</div>
+          <div class="side-title"><a href="${esc(d.issue_url || d.issue_link)}" target="_blank">${esc(truncate(d.issue || d.issue_to_solve, 60))}</a></div>
+        </div>
+        <div class="match-arrow">⟷</div>
+        <div class="match-side">
+          <div class="side-label">💼 Matching Job</div>
+          <div class="side-title"><a href="${esc(d.job_url || d.job_link)}" target="_blank">${esc(truncate(d.job || d.matching_job, 60))}</a></div>
+          <div class="side-meta">🏢 ${esc(d.company_name)}</div>
+        </div>
+      </div>`
+      )
+      .join("");
+  } catch (err) {
+    stopPanelTimeline("match-body");
+    el.innerHTML = `<div class="error-msg">Failed to load matches: ${esc(err.message)}</div>`;
+  } finally {
+    toggleElementLoading("match-btn", false);
+  }
+}
+
+// ─── Load: Cross-Source Trending (HN × DEV.to JOIN) ──────────────────
+async function loadTrending() {
+  const el = document.getElementById("trending-body");
+  const topic = document.getElementById("trending-topic").value.trim() || "javascript";
+
+  toggleElementLoading("trending-btn", true);
+  startPanelTimeline("trending-body", [
+    "📡 Spinning up Coral query loopback...",
+    "📰 Querying Algolia HackerNews database...",
+    "📝 Correlating tags on DEV.to content network...",
+    "🔥 Compiling multi-source trend matrix..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/trending?topic=${encodeURIComponent(topic)}`);
+    const json = await res.json();
+    const data = json.data || [];
+
+    stopPanelTimeline("trending-body");
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Trending Correlates Found", "No overlap found between trending tech news and development manuals.");
+      return;
+    }
+
+    el.innerHTML = data
+      .map(
+        (d) => `
+      <div class="match-row">
+        <div class="match-side">
+          <div class="side-label">🔥 HN Trend</div>
+          <div class="side-title"><a href="${esc(d.hn_url || d.trending_url)}" target="_blank">${esc(truncate(d.trending || d.trending_topic, 60))}</a></div>
+          <div class="side-meta">▲ ${d.points || 0} pts</div>
+        </div>
+        <div class="match-arrow">⟷</div>
+        <div class="match-side">
+          <div class="side-label">📝 DEV.to Article</div>
+          <div class="side-title"><a href="${esc(d.article_url || d.article_link)}" target="_blank">${esc(truncate(d.article || d.learn_article, 60))}</a></div>
+          <div class="side-meta">❤️ ${d.positive_reactions_count || 0} reactions</div>
+        </div>
+      </div>`
+      )
+      .join("");
+  } catch (err) {
+    stopPanelTimeline("trending-body");
+    el.innerHTML = `<div class="error-msg">Failed to load trending: ${esc(err.message)}</div>`;
+  } finally {
+    toggleElementLoading("trending-btn", false);
+  }
+}
+
+// ─── Render: Dynamic Rich Cards for NL→SQL Results ─────────────────
+function renderDynamicCards(records) {
+  if (!records || records.length === 0) {
+    return getEmptyStateHTML("No Matching Data Nodes Found", "The sources compiled successfully, but no active records exist for this contextual filter string.");
+  }
+
+  return `<div class="cards-grid">` + records.map((row) => {
+    // 1. Cross-Source Issue × Job
+    if (('issue' in row || 'issue_to_solve' in row) && ('job' in row || 'matching_job' in row)) {
+      const issue = row.issue || row.issue_to_solve || '';
+      const issueUrl = row.issue_url || row.issue_link || '#';
+      const job = row.job || row.matching_job || '';
+      const jobUrl = row.job_url || row.job_link || '#';
+      const company = row.company_name || '';
+      return `
+        <div class="match-row" style="margin-bottom: 8px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;">
+          <div class="match-side">
+            <div class="side-label">📋 Open Issue</div>
+            <div class="side-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <a href="${esc(issueUrl)}" target="_blank">${esc(truncate(issue, 45))}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'GitHub Bug', '${esc(issue)}', '${esc(issueUrl)}', '')">✈️ Send</button>
+            </div>
+          </div>
+          <div class="match-arrow">⟷</div>
+          <div class="match-side">
+            <div class="side-label">💼 Matching Job</div>
+            <div class="side-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <a href="${esc(jobUrl)}" target="_blank">${esc(truncate(job, 45))}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Job Position', '${esc(job)}', '${esc(jobUrl)}', '${esc(company)}')">✈️ Send</button>
+            </div>
+            <div class="side-meta">🏢 ${esc(company)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. Cross-Source HN × DEV.to
+    if (('trending' in row || 'trending_topic' in row) && ('article' in row || 'learn_article' in row)) {
+      const trending = row.trending || row.trending_topic || '';
+      const hnUrl = row.hn_url || row.trending_url || row.article_link || '#';
+      const article = row.article || row.learn_article || '';
+      const articleUrl = row.article_url || row.article_link || '#';
+      const points = row.points || row.score || 0;
+      const reactions = row.positive_reactions_count || 0;
+      return `
+        <div class="match-row" style="margin-bottom: 8px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;">
+          <div class="match-side">
+            <div class="side-label">🔥 HN Trend</div>
+            <div class="side-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <a href="${esc(hnUrl)}" target="_blank">${esc(truncate(trending, 45))}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'HackerNews Trend', '${esc(trending)}', '${esc(hnUrl)}', '')">✈️ Send</button>
+            </div>
+            <div class="side-meta">▲ ${points} pts</div>
+          </div>
+          <div class="match-arrow">⟷</div>
+          <div class="match-side">
+            <div class="side-label">📝 DEV.to Article</div>
+            <div class="side-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <a href="${esc(articleUrl)}" target="_blank">${esc(truncate(article, 45))}</a>
+              <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Dev Article', '${esc(article)}', '${esc(articleUrl)}', '')">✈️ Send</button>
+            </div>
+            <div class="side-meta">❤️ ${reactions} reactions</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 3a. Single Remotive Job
+    if ('company_name' in row || 'candidate_required_location' in row) {
+      const title = row.title || Object.values(row)[0];
+      const link = row.url || '#';
+      const company = row.company_name || '';
+      const location = row.candidate_required_location || '';
+      const salary = row.salary || '';
+      const tags = row.tags || '';
+      return `
+        <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+          <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="${esc(link)}" target="_blank">💼 ${esc(title)}</a>
+            <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Remotive Job', '${esc(title)}', '${esc(link)}', '${esc(company)}')">✈️ Send</button>
+          </div>
+          <div class="row-meta">
+            ${company ? `<span>🏢 ${esc(company)}</span>` : ''}
+            ${location ? `<span>📍 ${esc(location)}</span>` : ''}
+            ${salary ? `<span>💰 ${esc(salary)}</span>` : ''}
+          </div>
+          ${renderTags(tags, 4)}
+        </div>
+      `;
+    }
+
+    // 3b. Single Adzuna Job
+    if ('company' in row && 'location' in row && ('salary_max' in row || 'redirect_url' in row || 'url' in row)) {
+      const title = row.title || Object.values(row)[0];
+      const link = row.url || row.redirect_url || '#';
+      const company = row.company || '';
+      const location = row.location || '';
+      const salary = row.salary_max ? `£${row.salary_max}` : '';
+      return `
+        <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+          <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="${esc(link)}" target="_blank">💼 ${esc(title)}</a>
+            <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Adzuna Job', '${esc(title)}', '${esc(link)}', '${esc(company)}')">✈️ Send</button>
+          </div>
+          <div class="row-meta">
+            ${company ? `<span>🏢 ${esc(company)}</span>` : ''}
+            ${location ? `<span>📍 ${esc(location)}</span>` : ''}
+            ${salary ? `<span>💰 ${esc(salary)}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. Single GitHub Issue or Pull Request
+    if ('html_url' in row && ('user__login' in row || 'user_login' in row || 'number' in row)) {
+      const title = row.title || Object.values(row)[0];
+      const link = row.html_url || '#';
+      const user = row.user__login || row.user_login || '';
+      const number = row.number || '';
+      const state = row.state || '';
+      const comments = row.comments || 0;
+      return `
+        <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+          <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="${esc(link)}" target="_blank">📋 ${esc(title)}</a>
+            <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'GitHub Record', '${esc(title)}', '${esc(link)}', '#${esc(number)}')">✈️ Send</button>
+          </div>
+          <div class="row-meta">
+            ${user ? `<span>👤 ${esc(user)}</span>` : ''}
+            <span>#${esc(number)}</span>
+            <span style="color: ${state === 'open' ? 'var(--teal)' : 'var(--pink)'}">${esc(state)}</span>
+            <span>💬 ${esc(comments)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. Single HackerNews search
+    if ('points' in row && 'author' in row) {
+      const title = row.title || Object.values(row)[0];
+      const link = row.url || '#';
+      const points = row.points || 0;
+      const comments = row.num_comments || 0;
+      const author = row.author || '';
+      return `
+        <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+          <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="${esc(link)}" target="_blank">📰 ${esc(title)}</a>
+            <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'HackerNews Story', '${esc(title)}', '${esc(link)}', 'author: ${esc(author)}')">✈️ Send</button>
+          </div>
+          <div class="row-meta">
+            <span>▲ ${esc(points)} pts</span>
+            <span>💬 ${esc(comments)}</span>
+            <span>👤 ${esc(author)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // 6. Single DEV.to Article
+    if ('positive_reactions_count' in row && 'author_username' in row) {
+      const title = row.title || Object.values(row)[0];
+      const link = row.url || '#';
+      const reactions = row.positive_reactions_count || 0;
+      const author = row.author_username || '';
+      const readingTime = row.reading_time_minutes || '';
+      return `
+        <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+          <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="${esc(link)}" target="_blank">📝 ${esc(title)}</a>
+            <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Dev Article', '${esc(title)}', '${esc(link)}', 'author: ${esc(author)}')">✈️ Send</button>
+          </div>
+          <div class="row-meta">
+            <span>❤️ ${esc(reactions)}</span>
+            <span>👤 ${esc(author)}</span>
+            ${readingTime ? `<span>📖 ${esc(readingTime)}m read</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 7. General Reflective Fallback (Vulnerability mitigation)
+    const keys = Object.keys(row);
+    if (keys.length === 0) return '';
+
+    const titleKey = keys.find(k => k.toLowerCase().includes('title') || k.toLowerCase().includes('name') || k.toLowerCase().includes('trending') || k.toLowerCase().includes('issue') || k.toLowerCase().includes('job')) || keys[0];
+    const linkKey = keys.find(k => k.toLowerCase().includes('url') || k.toLowerCase().includes('link') || k.toLowerCase().includes('html'));
+
+    const title = row[titleKey] || 'Record';
+    const link = linkKey ? row[linkKey] : '#';
+
+    const metaParts = keys
+      .filter(k => k !== titleKey && k !== linkKey)
+      .map(k => `<span><strong>${esc(k)}:</strong> ${esc(truncate(String(row[k]), 40))}</span>`)
+      .join(' · ');
+
+    return `
+      <div class="data-row" style="background: var(--bg-elevated); margin-bottom: 8px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: left;">
+        <div class="row-title" style="display:flex; justify-content:space-between; align-items:center;">
+          ${linkKey ? `<a href="${esc(link)}" target="_blank">🔍 ${esc(title)}</a>` : `🔍 ${esc(title)}`}
+          <button class="btn btn-sm" style="padding:2px 6px; font-size:10px;" onclick="sendToTelegram(event, 'Query Result', '${esc(title)}', '${esc(link)}', '')">✈️ Send</button>
+        </div>
+        ${metaParts ? `<div class="row-meta" style="flex-wrap: wrap; gap: 8px; margin-top: 4px;">${metaParts}</div>` : ''}
+      </div>
+    `;
+  }).join("") + `</div>`;
+}
+
+
+// ─── Render: Ask Agent Output with Toggles ───────────────────────────
+function renderAskResults() {
+  const wrapper = document.getElementById("ask-data-wrapper");
+  if (!currentAskResults) return;
+
+  if (showRawJson) {
+    wrapper.innerHTML = `
+      <div style="padding: 10px; display: flex; justify-content: flex-end; border-bottom: 1px solid var(--border);">
+        <button class="btn btn-sm" id="json-toggle-btn" onclick="toggleRawJson()">Show Cards</button>
+      </div>
+      <pre style="padding: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); background: transparent; border: none; overflow-x: auto; white-space: pre-wrap; margin: 0; text-align: left;">${esc(JSON.stringify(currentAskResults, null, 2))}</pre>
+    `;
+  } else {
+    wrapper.innerHTML = `
+      <div style="padding: 10px; display: flex; justify-content: flex-end; border-bottom: 1px solid var(--border);">
+        <button class="btn btn-sm" id="json-toggle-btn" onclick="toggleRawJson()">Show Raw JSON</button>
+      </div>
+      <div style="padding: 12px; width: 100%;">
+        ${renderDynamicCards(currentAskResults)}
+      </div>
+    `;
+  }
+}
+
+function toggleRawJson() {
+  showRawJson = !showRawJson;
+  renderAskResults();
+}
+
+// ─── Ask ContriMatch (NL→SQL) ──────────────────────────────────────
+async function askAgent() {
+  const input = document.getElementById("ask-input");
+  const question = input.value.trim();
+  if (!question) return;
+
+  const resultDiv = document.getElementById("ask-result");
+  const sqlEl = document.getElementById("ask-sql");
+  const countEl = document.getElementById("ask-count");
+
+  resultDiv.classList.add("active");
+  sqlEl.textContent = "-- 🤖 Thinking... Converting to Coral SQL...";
+  sqlEl.style.color = "";
+  countEl.textContent = "…";
+  
+  toggleElementLoading("ask-btn", true);
+  startPanelTimeline("ask-data-wrapper", [
+    "🤖 Parsing user natural language prompt...",
+    "🧠 Querying Gemini model for SQL compilation...",
+    "🔍 Validating generated Coral SQL query structure...",
+    "📡 Launching sub-process loop to local Coral engine...",
+    "🧬 Weaving cross-source datasets dynamically..."
+  ]);
+
+  try {
+    const res = await fetch(`${API}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    const json = await res.json();
+
+    stopPanelTimeline("ask-data-wrapper");
+
+    // Show generated SQL
+    if (json.sql) {
+      sqlEl.textContent = json.sql;
+    }
+
+    // Show error if any
+    if (json.error) {
+      document.getElementById("ask-data-wrapper").innerHTML = `<div class="error-msg">Error: ${esc(json.error)}</div>`;
+      countEl.textContent = "error";
+      return;
+    }
+
+    // Show results
+    currentAskResults = json.data || [];
+    countEl.textContent = currentAskResults.length;
+    renderAskResults();
+  } catch (err) {
+    stopPanelTimeline("ask-data-wrapper");
+    sqlEl.textContent = "-- Failed to reach backend";
+    sqlEl.style.color = "var(--pink)";
+    document.getElementById("ask-data-wrapper").innerHTML = `<div class="error-msg">Failed to execute: ${esc(err.message)}</div>`;
+    countEl.textContent = "error";
+  } finally {
+    toggleElementLoading("ask-btn", false);
+  }
+}
+
+function askPreset(question) {
+  document.getElementById("ask-input").value = question;
+  askAgent();
+}
+
+// ─── Health check ──────────────────────────────────────────────────
+async function checkHealth() {
+  const el = document.getElementById("stat-api");
+  try {
+    const res = await fetch(`${API}/health`);
+    if (res.ok) {
+      el.textContent = "✓";
+      el.style.color = "var(--teal)";
+    } else {
+      el.textContent = "✗";
+      el.style.color = "var(--pink)";
+    }
+  } catch {
+    el.textContent = "✗";
+    el.style.color = "var(--pink)";
+  }
+}
+
+// ─── Settings Manager Logic ──────────────────────────────────────────
+let settingsPassword = "";
+
+async function openSettings() {
+  const modal = document.getElementById("settings-modal");
+  modal.classList.add("active");
+  
+  // Check settings status (if password is set)
+  try {
+    const res = await fetch(`${API}/settings/status`);
+    const json = await res.json();
+    
+    document.getElementById("settings-setup-step").style.display = "none";
+    document.getElementById("settings-unlock-step").style.display = "none";
+    document.getElementById("settings-manage-step").style.display = "none";
+    
+    if (json.setup) {
+      if (settingsPassword) {
+        // Already unlocked in session
+        loadManageKeysStep();
+      } else {
+        document.getElementById("settings-unlock-step").style.display = "block";
+        document.getElementById("unlock-password-input").focus();
+      }
+    } else {
+      document.getElementById("settings-setup-step").style.display = "block";
+      document.getElementById("setup-password-input").focus();
+    }
+  } catch (e) {
+    alert("Error fetching settings status: " + e.message);
+  }
+}
+
+function closeSettings() {
+  document.getElementById("settings-modal").classList.remove("active");
+}
+
+async function setupPassword() {
+  const pwd = document.getElementById("setup-password-input").value;
+  if (!pwd) {
+    alert("Please enter a master password.");
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/settings/setup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd })
+    });
+    if (res.ok) {
+      settingsPassword = pwd;
+      alert("Master password set successfully! Unlocking key manager...");
+      loadManageKeysStep();
+    } else {
+      const err = await res.json();
+      alert("Failed: " + err.detail);
+    }
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
+}
+
+async function unlockSettings() {
+  const pwd = document.getElementById("unlock-password-input").value;
+  if (!pwd) {
+    alert("Please enter password.");
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/settings/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd })
+    });
+    if (res.ok) {
+      settingsPassword = pwd;
+      document.getElementById("unlock-password-input").value = "";
+      loadManageKeysStep();
+    } else {
+      alert("Wrong password.");
+    }
+  } catch (e) {
+    alert("Error verifying password: " + e.message);
+  }
+}
+
+async function loadManageKeysStep() {
+  document.getElementById("settings-unlock-step").style.display = "none";
+  document.getElementById("settings-setup-step").style.display = "none";
+  document.getElementById("settings-manage-step").style.display = "block";
+  
+  // Load current keys
+  try {
+    const res = await fetch(`${API}/settings/keys/get`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: settingsPassword })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const keys = json.keys || {};
+      document.getElementById("key-github-input").value = keys.GITHUB_TOKEN || "";
+      document.getElementById("key-gemini-input").value = keys.GEMINI_API_KEY || "";
+      document.getElementById("key-telegram-input").value = keys.TELEGRAM_BOT_TOKEN || "";
+      document.getElementById("key-model-input").value = keys.GEMINI_MODEL || "gemini-3.5-flash";
+    } else {
+      alert("Failed to load keys. Please verify password.");
+    }
+  } catch (e) {
+    alert("Error loading keys: " + e.message);
+  }
+}
+
+async function saveKeys() {
+  const github = document.getElementById("key-github-input").value;
+  const gemini = document.getElementById("key-gemini-input").value;
+  const telegram = document.getElementById("key-telegram-input").value;
+  const model = document.getElementById("key-model-input").value;
+  
+  toggleElementLoading("save-keys-btn", true);
+  try {
+    const res = await fetch(`${API}/settings/keys/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        password: settingsPassword,
+        keys: {
+          GITHUB_TOKEN: github,
+          GEMINI_API_KEY: gemini,
+          TELEGRAM_BOT_TOKEN: telegram,
+          GEMINI_MODEL: model
+        }
+      })
+    });
+    if (res.ok) {
+      alert("API keys saved and hot-reloaded! Environment updated successfully.");
+      closeSettings();
+      // Reload panels to refresh with new credentials
+      checkHealth();
+      loadIssues();
+      loadWorkspace();
+      loadJobs();
+      loadAdzuna();
+    } else {
+      const err = await res.json();
+      alert("Failed to save keys: " + err.detail);
+    }
+  } catch (e) {
+    alert("Error saving keys: " + e.message);
+  } finally {
+    toggleElementLoading("save-keys-btn", false);
+  }
+}
+
+async function changePassword() {
+  const newPwd = document.getElementById("change-new-password").value;
+  if (!newPwd) {
+    alert("Please enter a new password.");
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/settings/change_password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: settingsPassword,
+        new_password: newPwd
+      })
+    });
+    if (res.ok) {
+      settingsPassword = newPwd;
+      document.getElementById("change-new-password").value = "";
+      alert("Password changed successfully!");
+    } else {
+      const err = await res.json();
+      alert("Failed to change password: " + err.detail);
+    }
+  } catch (e) {
+    alert("Error changing password: " + e.message);
+  }
+}
+
+async function forgotPassword(event) {
+  event.preventDefault();
+  if (!confirm("Initiate settings password recovery? This will reset your password and send a new temporary password directly to your Telegram bot.")) {
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/settings/forgot_password`, {
+      method: "POST"
+    });
+    if (res.ok) {
+      alert("🔑 Security recovery complete! Check your phone for a new temporary settings password from your Telegram bot.");
+      openSettings(); // refresh status
+    } else {
+      const err = await res.json();
+      alert("Recovery failed: " + err.detail);
+    }
+  } catch (e) {
+    alert("Error recovering password: " + e.message);
+  }
+}
+
+// ─── Live Dynamic Contributions Grid & Org Grouping ──────────────────
+async function loadContributions() {
+  const el = document.getElementById("contributions-wrapper");
+  if (!el) return;
+
+  const user = document.getElementById("workspace-user-input")?.value.trim() || "vinayaksonthalia";
+  document.getElementById("contribution-user-label").textContent = user;
+
+  el.innerHTML = `<div class="loading"><div class="spinner"></div> Fetching all pull requests by ${esc(user)}…</div>`;
+
+  try {
+    const res = await fetch(`${API}/contributions?user=${encodeURIComponent(user)}`);
+    const json = await res.json();
+    const data = json.data || [];
+
+    if (!data.length) {
+      el.innerHTML = getEmptyStateHTML("No Contributions Located", "Verify GitHub PAT permissions and username.");
+      return;
+    }
+
+    // Group PRs by "owner/repo"
+    const groups = {};
+    data.forEach((pr) => {
+      const key = `${pr.owner}/${pr.repo}`;
+      if (!groups[key]) {
+        groups[key] = { owner: pr.owner, repo: pr.repo, open: [], merged: [], closed: [] };
+      }
+      if (pr.state === "merged") {
+        groups[key].merged.push(pr);
+      } else if (pr.state === "open") {
+        groups[key].open.push(pr);
+      } else {
+        groups[key].closed.push(pr);
+      }
+    });
+
+    // Sort groups by total PR count descending
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const countA = groups[a].open.length + groups[a].merged.length + groups[a].closed.length;
+      const countB = groups[b].open.length + groups[b].merged.length + groups[b].closed.length;
+      return countB - countA;
+    });
+
+    // Render grouped layout
+    el.innerHTML = sortedKeys.map((key) => {
+      const g = groups[key];
+      const total = g.open.length + g.merged.length + g.closed.length;
+      const id = "org-group-" + key.replace("/", "-");
+      
+      return `
+        <div class="org-group">
+          <div class="org-header" onclick="toggleOrgGroup('${id}')">
+            <span class="org-name">📂 ${esc(key)}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="org-badge">${total} PRs</span>
+              <span class="org-arrow" id="${id}-arrow">▶</span>
+            </div>
+          </div>
+          <div class="org-body" id="${id}" style="display: none;">
+            ${g.merged.length > 0 ? `
+              <div class="pr-subsection">
+                <div class="pr-subsection-title">✅ Merged (${g.merged.length})</div>
+                <div class="pr-grid">
+                  ${g.merged.map(pr => `
+                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-merged">
+                      <span class="pr-icon">✈️</span>
+                      <div class="pr-info">
+                        <div class="pr-card-title">${esc(pr.title)}</div>
+                        <div class="pr-card-meta">PR #${pr.number} (Merged)</div>
+                      </div>
+                    </a>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ""}
+            
+            ${g.open.length > 0 ? `
+              <div class="pr-subsection">
+                <div class="pr-subsection-title">⚡ Open (${g.open.length})</div>
+                <div class="pr-grid">
+                  ${g.open.map(pr => `
+                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-open">
+                      <span class="pr-icon">🕒</span>
+                      <div class="pr-info">
+                        <div class="pr-card-title">${esc(pr.title)}</div>
+                        <div class="pr-card-meta">PR #${pr.number} (Active)</div>
+                      </div>
+                    </a>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ""}
+            
+            ${g.closed.length > 0 ? `
+              <div class="pr-subsection">
+                <div class="pr-subsection-title">🛑 Closed/Unmerged (${g.closed.length})</div>
+                <div class="pr-grid">
+                  ${g.closed.map(pr => `
+                    <a href="${esc(pr.html_url)}" target="_blank" class="pr-card pr-closed">
+                      <span class="pr-icon">🛑</span>
+                      <div class="pr-info">
+                        <div class="pr-card-title">${esc(pr.title)}</div>
+                        <div class="pr-card-meta">PR #${pr.number} (Closed)</div>
+                      </div>
+                    </a>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Auto expand the first group by default
+    if (sortedKeys.length > 0) {
+      const firstId = "org-group-" + sortedKeys[0].replace("/", "-");
+      toggleOrgGroup(firstId);
+    }
+
+  } catch (e) {
+    el.innerHTML = `<div class="error-msg">Failed to load contributions: ${esc(e.message)}</div>`;
+  }
+}
+
+function toggleOrgGroup(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + "-arrow");
+  if (!el) return;
+
+  const isCollapsed = el.style.display === "none";
+  if (isCollapsed) {
+    el.style.display = "block";
+    if (arrow) arrow.textContent = "▼";
+  } else {
+    el.style.display = "none";
+    if (arrow) arrow.textContent = "▶";
+  }
+}
+
+// ─── Initialize ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  // Apply stored theme if present
+  const savedTheme = localStorage.getItem("theme");
+  const btn = document.getElementById("theme-btn");
+  if (savedTheme === "light") {
+    document.body.classList.add("light-theme");
+    if (btn) btn.textContent = "🌙 Dark";
+  } else {
+    if (btn) btn.textContent = "☀️ Light";
+  }
+
+  checkHealth();
+  loadIssues();
+  loadWorkspace();
+  loadJobs();
+  loadAdzuna();
+  loadNews();
+  loadArticles();
+  loadMatches();
+  loadTrending();
+  loadContributions();
+});
+
